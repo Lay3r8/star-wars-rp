@@ -57,7 +57,6 @@ def upgrade() -> None:
         sa.Column("campaign_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("entity_type", sa.String(length=32), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.CheckConstraint("entity_type IN ('character', 'location')", name="ck_entity_type"),
         sa.ForeignKeyConstraint(["campaign_id"], ["campaign.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("campaign_id", "id", name="uq_entity_campaign_id"),
@@ -197,7 +196,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("rolled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.CheckConstraint("dc >= 1", name="ck_action_resolution_dc"),
         sa.CheckConstraint("mechanic = 'slicing'", name="ck_action_resolution_mechanic"),
         sa.CheckConstraint(
             "natural_roll IS NULL OR natural_roll BETWEEN 1 AND 20",

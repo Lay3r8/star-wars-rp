@@ -251,7 +251,7 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
         }}>
           <h3>2. Create Character</h3>
           <label>Character name<input name="name" required /></label>
-          <label>Slicing modifier<input name="modifier" type="number" defaultValue="2" min="-20" max="20" required /></label>
+          <label>Slicing modifier<input name="modifier" type="number" defaultValue="2" required /></label>
           <button>Create character</button>
         </form>
 
@@ -313,7 +313,7 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
 
         <label>Intent<textarea name="intent" defaultValue="Discover where the confiscated shipment was transferred." required /></label>
         <label>Risk<textarea name="risk" defaultValue="On failure, Imperial security notices the intrusion." required /></label>
-        <label>DC<input name="dc" type="number" min="1" max="100" defaultValue="10" required /></label>
+        <label>DC<input name="dc" type="number" defaultValue="10" required /></label>
         <button disabled={!readyForResolution}>Create pre-bound resolution</button>
       </form>
 

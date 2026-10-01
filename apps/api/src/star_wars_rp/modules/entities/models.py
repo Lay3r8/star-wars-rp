@@ -10,7 +10,6 @@ from star_wars_rp.db import Base
 class Entity(Base):
     __tablename__ = "entity"
     __table_args__ = (
-        CheckConstraint("entity_type IN ('character', 'location')", name="ck_entity_type"),
         UniqueConstraint("campaign_id", "id", name="uq_entity_campaign_id"),
     )
 

@@ -15,7 +15,6 @@ class ActionResolution(Base):
             name="ck_action_resolution_state",
         ),
         CheckConstraint("outcome IS NULL OR outcome IN ('SUCCESS', 'FAILURE')", name="ck_action_resolution_outcome"),
-        CheckConstraint("dc >= 1", name="ck_action_resolution_dc"),
         CheckConstraint("mechanic = 'slicing'", name="ck_action_resolution_mechanic"),
         CheckConstraint(
             "natural_roll IS NULL OR natural_roll BETWEEN 1 AND 20",

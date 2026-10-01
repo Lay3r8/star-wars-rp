@@ -43,7 +43,7 @@ class AssignmentRequest(BaseModel):
 
 class CharacterCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    slicing_modifier: int = Field(ge=-20, le=20)
+    slicing_modifier: int
 
 
 class CharacterOut(BaseModel):
@@ -77,7 +77,7 @@ class ResolutionCreate(BaseModel):
     context_location_id: uuid.UUID
     intent: str = Field(min_length=1, max_length=2000)
     risk: str = Field(min_length=1, max_length=2000)
-    dc: int = Field(ge=1, le=100)
+    dc: int
     success_recipient_character_id: uuid.UUID
     success_fragment_id: uuid.UUID
 
