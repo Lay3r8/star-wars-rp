@@ -7,6 +7,28 @@ from star_wars_rp.application.campaigns import require_gm
 from star_wars_rp.modules.history.models import DomainEvent
 
 
+def append_domain_event(
+    db: Session,
+    *,
+    campaign_id: uuid.UUID,
+    event_type: str,
+    subject_type: str,
+    subject_id: uuid.UUID,
+    actor_principal_id: uuid.UUID,
+    payload: dict,
+) -> DomainEvent:
+    event = DomainEvent(
+        campaign_id=campaign_id,
+        event_type=event_type,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        actor_principal_id=actor_principal_id,
+        payload=payload,
+    )
+    db.add(event)
+    return event
+
+
 def campaign_history(
     db: Session,
     gm_principal_id: uuid.UUID,

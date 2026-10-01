@@ -6,13 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from star_wars_rp.application.campaigns import ROLE_PLAYER, require_gm
+from star_wars_rp.application.history import append_domain_event
+from star_wars_rp.application.knowledge import make_character_aware
 from star_wars_rp.errors import Conflict, InvalidOperation, NotFound
 from star_wars_rp.modules.campaigns.models import CampaignMembership, PlayerCharacterAssignment
 from star_wars_rp.modules.characters.models import Character
 from star_wars_rp.modules.custom_d20.models import CustomD20CharacterProfile
 from star_wars_rp.modules.custom_d20.rules import resolve_check
-from star_wars_rp.modules.history.models import DomainEvent
-from star_wars_rp.modules.knowledge.models import CharacterKnowledge, KnowledgeFragment
+from star_wars_rp.modules.knowledge.models import KnowledgeFragment
 from star_wars_rp.modules.resolutions.models import ActionResolution
 from star_wars_rp.modules.world.models import Location
 
@@ -231,24 +232,12 @@ def apply_success(
         raise Conflict("Only a successful pending resolution can be applied")
 
     _validate_bound_references(db, resolution)
-    knowledge = db.get(
-        CharacterKnowledge,
-        {
-            "campaign_id": campaign_id,
-            "character_id": resolution.success_recipient_character_id,
-            "fragment_id": resolution.success_fragment_id,
-        },
+    make_character_aware(
+        db,
+        campaign_id,
+        resolution.success_recipient_character_id,
+        resolution.success_fragment_id,
     )
-    if knowledge is None:
-        knowledge = CharacterKnowledge(
-            campaign_id=campaign_id,
-            character_id=resolution.success_recipient_character_id,
-            fragment_id=resolution.success_fragment_id,
-            state="AWARE",
-        )
-        db.add(knowledge)
-    else:
-        knowledge.state = "AWARE"
 
     fragment = db.scalar(
         select(KnowledgeFragment).where(
@@ -265,22 +254,21 @@ def apply_success(
 
     resolution.state = CLOSED_SUCCESS
     resolution.closed_at = datetime.now(timezone.utc)
-    db.add(
-        DomainEvent(
-            campaign_id=campaign_id,
-            event_type="resolution.success_applied",
-            subject_type="action_resolution",
-            subject_id=resolution.id,
-            actor_principal_id=gm_principal_id,
-            payload={
-                "resolution_id": str(resolution.id),
-                "recipient_character_id": str(resolution.success_recipient_character_id),
-                "recipient_name": recipient.name,
-                "fragment_id": str(resolution.success_fragment_id),
-                "claim_text": fragment.claim_text,
-                "intent": resolution.intent,
-            },
-        )
+    append_domain_event(
+        db,
+        campaign_id=campaign_id,
+        event_type="resolution.success_applied",
+        subject_type="action_resolution",
+        subject_id=resolution.id,
+        actor_principal_id=gm_principal_id,
+        payload={
+            "resolution_id": str(resolution.id),
+            "recipient_character_id": str(resolution.success_recipient_character_id),
+            "recipient_name": recipient.name,
+            "fragment_id": str(resolution.success_fragment_id),
+            "claim_text": fragment.claim_text,
+            "intent": resolution.intent,
+        },
     )
     db.commit()
     return serialize_resolution(db, resolution)
@@ -310,20 +298,19 @@ def close_failure(
     resolution.failure_adjudication = adjudication
     resolution.state = CLOSED_FAILURE
     resolution.closed_at = datetime.now(timezone.utc)
-    db.add(
-        DomainEvent(
-            campaign_id=campaign_id,
-            event_type="resolution.failure_closed",
-            subject_type="action_resolution",
-            subject_id=resolution.id,
-            actor_principal_id=gm_principal_id,
-            payload={
-                "resolution_id": str(resolution.id),
-                "intent": resolution.intent,
-                "risk": resolution.risk,
-                "adjudication": adjudication,
-            },
-        )
+    append_domain_event(
+        db,
+        campaign_id=campaign_id,
+        event_type="resolution.failure_closed",
+        subject_type="action_resolution",
+        subject_id=resolution.id,
+        actor_principal_id=gm_principal_id,
+        payload={
+            "resolution_id": str(resolution.id),
+            "intent": resolution.intent,
+            "risk": resolution.risk,
+            "adjudication": adjudication,
+        },
     )
     db.commit()
     return serialize_resolution(db, resolution)
