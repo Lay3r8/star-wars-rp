@@ -180,7 +180,7 @@ Role is server-authoritative.
 entity
 - id UUID PK
 - campaign_id FK
-- entity_type: character | location
+- entity_type (Slice 1 creates `character` and `location`; the DB does not enumerate all future identity types)
 - created_at
 UNIQUE(campaign_id, id)
 ```

@@ -34,7 +34,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByLabel("Character name").fill("Kara Venn");
   await gmPage.getByRole("button", { name: "Create character" }).click();
-  await expect(gmPage.getByRole("option", { name: "Kara Venn" })).toBeVisible();
+  await expect(gmPage.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
   await gmPage.getByRole("button", { name: "Create location" }).click();
   await expect(gmPage.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await gmPage.getByRole("button", { name: "Create secret" }).click();
@@ -76,7 +76,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await expect(page.getByText(playerName, { exact: true })).toBeVisible();
   await page.getByLabel("Character name").fill("Kara Venn");
   await page.getByRole("button", { name: "Create character" }).click();
-  await expect(page.getByRole("option", { name: "Kara Venn" })).toBeVisible();
+  await expect(page.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
   await page.getByRole("button", { name: "Create location" }).click();
   await expect(page.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create secret" }).click();

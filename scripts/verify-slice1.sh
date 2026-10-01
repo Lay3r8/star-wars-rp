@@ -27,7 +27,7 @@ compose up -d db
 # The init script creates star_wars_rp_test on a fresh verification volume.
 compose run --rm \
   -e TEST_DATABASE_URL=postgresql+psycopg://starwars:starwars@db:5432/star_wars_rp_test \
-  api sh -c 'alembic upgrade head && pytest -q'
+  api pytest -q
 
 compose run --rm web npm run build
 
