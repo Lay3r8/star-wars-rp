@@ -153,14 +153,15 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [m, c, l, f, h] = await Promise.all([
+      const [m, c, l, f, h, r] = await Promise.all([
         api<Member[]>(`/api/campaigns/${campaign.id}/members`),
         api<Character[]>(`/api/campaigns/${campaign.id}/characters`),
         api<Location[]>(`/api/campaigns/${campaign.id}/locations`),
         api<Fragment[]>(`/api/campaigns/${campaign.id}/knowledge-fragments`),
         api<HistoryItem[]>(`/api/campaigns/${campaign.id}/history`),
+        api<Resolution | null>(`/api/campaigns/${campaign.id}/resolutions/latest`),
       ]);
-      setMembers(m); setCharacters(c); setLocations(l); setFragments(f); setHistory(h);
+      setMembers(m); setCharacters(c); setLocations(l); setFragments(f); setHistory(h); setResolution(r);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load campaign");
     }

@@ -178,6 +178,21 @@ def get_resolution(
     return serialize_resolution(db, _resolution(db, campaign_id, resolution_id))
 
 
+def get_latest_resolution(
+    db: Session,
+    gm_principal_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+) -> dict | None:
+    require_gm(db, gm_principal_id, campaign_id)
+    resolution = db.scalar(
+        select(ActionResolution)
+        .where(ActionResolution.campaign_id == campaign_id)
+        .order_by(ActionResolution.created_at.desc(), ActionResolution.id.desc())
+        .limit(1)
+    )
+    return serialize_resolution(db, resolution) if resolution is not None else None
+
+
 def roll_resolution(
     db: Session,
     gm_principal_id: uuid.UUID,

@@ -47,13 +47,17 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   await gmPage.getByRole("button", { name: "Roll" }).click();
   await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
 
+  await gmPage.reload();
+  await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
+  await expect(gmPage.getByRole("button", { name: "Apply reveal" })).toBeVisible();
+
   await playerPage.getByLabel("Username").fill(playerName);
   await playerPage.getByLabel("Password").fill("password123");
   await playerPage.getByRole("button", { name: "Login" }).click();
   await expect(playerPage.getByText("No disclosed knowledge yet.")).toBeVisible();
 
   await gmPage.getByRole("button", { name: "Apply reveal" }).click();
-  await playerPage.getByRole("button", { name: "Refresh" }).click();
+  await playerPage.reload();
   await expect(playerPage.getByText("The confiscated shipment was transferred to Dock 47.")).toBeVisible();
 
   await gmContext.close();
@@ -87,6 +91,10 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await page.getByRole("button", { name: "Create pre-bound resolution" }).click();
   await page.getByRole("button", { name: "Roll" }).click();
   await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Close failed resolution" })).toBeVisible();
   await page.getByRole("button", { name: "Close failed resolution" }).click();
   await expect(page.getByText("Resolution closed.")).toBeVisible();
   await expect(page.getByText("Imperial security logs the intrusion.")).toBeVisible();

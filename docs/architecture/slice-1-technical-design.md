@@ -496,6 +496,7 @@ Slice content, GM only:
 Resolution, GM only:
 
 - `POST /campaigns/{campaign_id}/resolutions`
+- `GET /campaigns/{campaign_id}/resolutions/latest`
 - `GET /campaigns/{campaign_id}/resolutions/{resolution_id}`
 - `POST /campaigns/{campaign_id}/resolutions/{resolution_id}/roll`
 - `POST /campaigns/{campaign_id}/resolutions/{resolution_id}/apply`
@@ -516,6 +517,7 @@ The API uses JSON except the HttpOnly cookie transport.
 React owns:
 
 - forms and display state;
+- reloading the latest persisted resolution through the backend rather than treating React state as durable;
 - compact GM Slice 1 flow;
 - Apply preview presentation;
 - Player projection display;

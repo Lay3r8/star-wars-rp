@@ -9,6 +9,7 @@ from star_wars_rp.application.resolutions import (
     apply_success,
     close_failure,
     create_resolution,
+    get_latest_resolution,
     get_resolution,
     roll_resolution,
     serialize_resolution,
@@ -40,6 +41,15 @@ def create(
         body.success_fragment_id,
     )
     return serialize_resolution(db, resolution)
+
+
+@router.get("/latest", response_model=ResolutionOut | None)
+def latest(
+    campaign_id: uuid.UUID,
+    principal: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    return get_latest_resolution(db, principal.id, campaign_id)
 
 
 @router.get("/{resolution_id}", response_model=ResolutionOut)

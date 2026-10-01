@@ -28,7 +28,7 @@ def login(body: AuthRequest, response: Response, db: Session = Depends(get_db)):
         max_age=settings.auth_token_minutes * 60,
         httponly=True,
         secure=settings.auth_cookie_secure,
-        samesite="lax",
+        samesite="strict",
         path="/",
     )
     return PrincipalOut(id=principal.id, username=principal.username)
