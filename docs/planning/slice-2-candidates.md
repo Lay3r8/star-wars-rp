@@ -1,6 +1,6 @@
 # Slice 2 Candidate Consolidation
 
-**Status:** PROPOSED  
+**Status:** HUMAN OPTION SELECTED — SLICE SPECIFICATION REQUIRED  
 **Owner:** Product Lead  
 **Purpose:** Consolidated cross-domain review and Human arbitration artifact  
 **Source of truth:** current `main` plus completed Game Design, UX, and Architecture reviews of PR #10
@@ -931,16 +931,65 @@ If the priority is to maximize **differentiation learning**, choose **Option B**
 
 ---
 
-# 9. Selection gate
+# 9. Human arbitration outcome
 
-No Slice 2 is ACCEPTED yet.
+**Date:** 2026-10-01  
+**Human Project Owner decision:** **OPTION C — Prep a Contact, Find Them Instantly, Use Them in Play**
 
-After Human arbitration:
+## Decision meaning
 
-1. record the selected option as a Product decision;
-2. have the relevant specialists finalize only the blocking contracts identified above;
-3. write the exact accepted Slice 2 scenario and acceptance criteria;
-4. update `docs/planning/current-slice.md`;
-5. only then authorize implementation.
+Option C is selected as the basis for the next vertical slice.
 
-PR #10 must remain unmerged until the Human Project Owner arbitrates.
+This selection is **not yet equivalent to an ACCEPTED implementation slice**.
+
+Before implementation is authorized, the selected option must be converted into an exact cross-domain slice contract covering:
+
+- concrete user scenario;
+- minimum Contact/NPC fields;
+- exact preparation workflow;
+- exact live-search/retrieval workflow;
+- exact "use in play" outcome;
+- search semantics required for that scenario;
+- player-facing effect/disclosure if the scenario includes one;
+- persistence/edit boundaries;
+- authorization and projection contracts;
+- end-to-end acceptance criteria;
+- explicit exclusions.
+
+## Human rationale captured by Product
+
+The Human Project Owner selected the Product-recommended Option C.
+
+The selection prioritizes:
+
+- GM workflow maturity;
+- durable UX after the Slice 1 prototype;
+- strong reuse of proven architecture;
+- low implementation risk for a solo developer;
+- preparation-to-live-play continuity.
+
+This does not reject combat, procedural generation, or knowledge investigation as future slices.
+
+## Deferred candidates
+
+- **Combat (A):** remains a credible later slice; it still requires a combat micro-contract before implementation.
+- **Procedural generation (B):** remains a credible later slice; it still requires generation lifecycle and playable-package decisions.
+- **Knowledge investigation (D):** remains deferred, not rejected.
+
+---
+
+# 10. Slice 2 specification gate
+
+The next slice becomes ACCEPTED only after:
+
+1. Product defines the bounded scenario and minimum Product scope;
+2. UX defines the bounded prep/search/live workflow using the accepted interaction guidance;
+3. Game Design confirms that no additional social/relationship rules are required beyond the selected scenario, or defines the minimum necessary semantics;
+4. Architecture confirms the minimum Contact persistence, edit/update, PostgreSQL search/read-model, authorization, and projection contracts;
+5. Product consolidates those inputs into exact acceptance criteria and explicit exclusions;
+6. the Human Project Owner ratifies the exact Slice 2 contract if any material cross-domain choice remains;
+7. `docs/planning/current-slice.md` is updated from Slice 1 to the accepted Slice 2;
+8. only then is implementation authorized.
+
+Until those steps are complete, Option C is **SELECTED FOR SPECIFICATION**, not `ACCEPTED`.
+
