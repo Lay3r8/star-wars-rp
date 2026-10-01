@@ -37,7 +37,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   await gmPage.getByRole("button", { name: "Create character" }).click();
   await expect(gmPage.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
   await gmPage.getByRole("button", { name: "Create location" }).click();
-  await expect(gmPage.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
+  await expect(gmPage.locator("details.legacy-setup").getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await gmPage.getByRole("button", { name: "Create secret" }).click();
   await expect(gmPage.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
 
@@ -88,7 +88,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await page.getByRole("button", { name: "Create character" }).click();
   await expect(page.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
   await page.getByRole("button", { name: "Create location" }).click();
-  await expect(page.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
+  await expect(page.locator("details.legacy-setup").getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create secret" }).click();
   await expect(page.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Assign" }).click();

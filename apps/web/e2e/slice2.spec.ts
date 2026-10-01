@@ -89,7 +89,7 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
   await summary.getByRole("button", { name: "Reveal…" }).click();
   await expect(summary.getByText("Recipient:")).toBeVisible();
   await expect(summary.getByText("Ryn Tal", { exact: true })).toBeVisible();
-  await expect(summary.getByText(claim, { exact: true })).toBeVisible();
+  await expect(summary.locator(".reveal-preview").getByText(claim, { exact: true })).toBeVisible();
   await summary.getByRole("button", { name: "Confirm Reveal" }).click();
   await expect(summary.getByText("Revealed to Ryn Tal.")).toBeVisible();
 
