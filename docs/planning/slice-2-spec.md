@@ -1,9 +1,9 @@
 # Slice 2 Final Specification — Prepare, Find and Use a Contact in Play
 
-**Status:** PROPOSED — REVIEWS CONSOLIDATED — READY FOR ACCEPTANCE  
+**Status:** ACCEPTED  
 **Owner:** Product Lead  
 **Selected direction:** Option C from `docs/planning/slice-2-candidates.md`  
-**Implementation authorization:** NOT GRANTED
+**Implementation authorization:** OPEN AFTER THIS ACCEPTANCE RECORD IS MERGED TO `main`
 
 ## Purpose
 
@@ -873,11 +873,13 @@ Accepted minimum:
 
 ---
 
-# 21. Human arbitration
+# 21. Human acceptance
 
-**No substantive Human arbitration remains.**
+**Accepted by Human Project Owner on 2026-10-01.**
 
-Previously open points now converge:
+The final consolidated contract is accepted as written.
+
+Previously open cross-domain points are resolved as follows:
 
 - source provenance: deferred;
 - Contact identity: Character + narrow Contact typed state;
@@ -886,7 +888,7 @@ Previously open points now converge:
 - inline information authoring: required;
 - veracity: explicit Truth status.
 
-No Human choice is required unless one of these converged decisions is explicitly reopened.
+These accepted Slice 2 decisions do not automatically accept any broader deferred capability.
 
 ---
 
@@ -894,17 +896,8 @@ No Human choice is required unless one of these converged decisions is explicitl
 
 **Remaining blockers: NONE.**
 
-This specification is:
+This specification is now **ACCEPTED**.
 
-**READY FOR ACCEPTANCE — IMPLEMENTATION NOT YET AUTHORIZED**
+Implementation is authorized **only after** this accepted specification, the updated decision log, and the updated `docs/planning/current-slice.md` are merged into `main`.
 
-The slice is still not marked `ACCEPTED`.
-
-`docs/planning/current-slice.md` remains unchanged.
-
-Next step:
-
-1. Human Project Owner accepts this final contract or explicitly reopens a material point.
-2. Product records the accepted Slice 2 decision.
-3. Product updates `docs/planning/current-slice.md`.
-4. Only after those acceptance records are merged into `main` is implementation authorized.
+No implementation should begin from the PR branch alone.
