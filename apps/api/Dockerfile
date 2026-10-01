@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -e ".[dev]"
 
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY tests ./tests
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

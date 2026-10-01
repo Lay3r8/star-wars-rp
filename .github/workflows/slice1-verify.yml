@@ -1,0 +1,20 @@
+name: Slice 1 verification
+
+on:
+  push:
+    branches:
+      - ai/architecture/slice-1
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Slice 1
+        run: ./scripts/verify-slice1.sh
