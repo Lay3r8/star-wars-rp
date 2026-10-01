@@ -595,7 +595,7 @@ Verified stable baseline at implementation start (2026-10-01):
 
 Backend:
 
-- Python 3.14.8
+- Python 3.14.7 (latest official `python:*` image available at implementation verification)
 - FastAPI 0.142.2
 - SQLAlchemy 2.1.1
 - Alembic 1.20.0
