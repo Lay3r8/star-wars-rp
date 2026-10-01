@@ -91,11 +91,19 @@ def _single_reveal_preview(db: Session, campaign_id: uuid.UUID, claim_text: str)
     rows = db.execute(
         select(PlayerCharacterAssignment.character_id, Character.name)
         .join(
+            CampaignMembership,
+            (CampaignMembership.campaign_id == PlayerCharacterAssignment.campaign_id)
+            & (CampaignMembership.principal_id == PlayerCharacterAssignment.player_principal_id),
+        )
+        .join(
             Character,
             (Character.campaign_id == PlayerCharacterAssignment.campaign_id)
             & (Character.entity_id == PlayerCharacterAssignment.character_id),
         )
-        .where(PlayerCharacterAssignment.campaign_id == campaign_id)
+        .where(
+            PlayerCharacterAssignment.campaign_id == campaign_id,
+            CampaignMembership.role == "PLAYER",
+        )
         .order_by(Character.name, PlayerCharacterAssignment.character_id)
         .limit(2)
     ).all()
