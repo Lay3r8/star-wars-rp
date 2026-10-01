@@ -1,1004 +1,946 @@
-# Slice 2 Candidate Shortlist
+# Slice 2 Candidate Consolidation
 
 **Status:** PROPOSED  
 **Owner:** Product Lead  
-**Purpose:** Cross-domain review artifact for selecting the next vertical slice  
-**Source of truth:** `main` as of 2026-10-01
+**Purpose:** Consolidated cross-domain review and Human arbitration artifact  
+**Source of truth:** current `main` plus completed Game Design, UX, and Architecture reviews of PR #10
 
-## Important repository note
-
-Slice 1 implementation and the UX interaction guidance are present in `main`.
-
-The previously prepared Product closeout document from PR #8 is **not currently present in `main`**; PR #8 remains open/draft. Its observations are therefore treated here only as non-normative Product input, while `main` remains authoritative.
-
-This document does **not** select Slice 2.
+This document does **not** select or accept Slice 2.
 
 ---
 
-# 1. Baseline after Slice 1
+# 1. Repository baseline
 
-## Accepted and proven
+## FACT
 
-Slice 1 has proven an end-to-end path across:
+The following are now in `main` and authoritative for this selection:
+
+- Slice 1 implementation;
+- accepted Slice 1 planning/decision records;
+- Slice 1 Product closeout;
+- Slice 1 UX interaction guidance;
+- Accepted ADRs and architecture decisions.
+
+The stale note from the original PR #10 draft saying that the Product closeout was not in `main` is no longer true and is removed by this consolidation.
+
+## FACT — what Slice 1 actually proved
+
+The project has proven:
 
 - authenticated GM and Player principals;
-- campaign membership and server-authoritative role checks;
-- Player-to-Character assignment;
-- campaign-scoped authorization;
+- campaign membership and backend authorization;
+- Character assignment;
 - Character and Location persistence;
-- `KnowledgeFragment` and `CharacterKnowledge`;
-- explicit player projections;
-- one bounded `ActionResolution`;
-- fiction-first Intent + Risk;
-- pre-bound success effect;
-- D20 resolution using a precomputed modifier against DC;
-- explicit GM Apply on success;
-- explicit GM adjudication + Close on failure;
+- KnowledgeFragment / CharacterKnowledge disclosure;
+- explicit Player projections;
+- one bounded D20 resolution;
+- Intent + Risk;
+- explicit success Apply and failure Close;
 - atomic canonical mutation;
-- append-only `DomainEvent` history;
+- append-only DomainEvent history;
 - reload/persistence;
-- idempotent success application;
-- backend-enforced disclosure.
+- idempotent commands;
+- E2E and integration-test harnesses.
 
-## Technical capability now available
+## FACT — important implementation constraint
 
-The implementation now provides reusable foundations for later slices:
+The existing persisted `ActionResolution` model is **Slice-1-specific**.
 
-- React application shell;
-- FastAPI modular monolith;
-- PostgreSQL + Alembic;
-- Docker Compose;
-- local authentication sufficient for prototype slices;
-- campaign membership/authorization services;
-- Entity identity registry;
-- typed Character and Location tables;
-- Custom D20 character profile;
-- Knowledge models;
-- ActionResolution lifecycle;
-- player-safe read projection;
-- history events/read view;
-- backend integration tests;
-- Playwright E2E verification.
+It is currently shaped around:
 
-## Still materially unproven
+- `mechanic = slicing`;
+- a pre-bound KnowledgeFragment;
+- success recipient = acting Character;
+- Apply/Close lifecycle for that disclosure flow.
 
-The following major product/gameplay areas remain essentially unvalidated:
+Future slices may reuse:
 
-- personal-scale combat;
-- initiative/action economy;
-- health/damage/wounds;
-- equipment/weapons;
-- NPC/minion-group handling;
-- abstract range/position;
-- procedural generation;
-- generated-content review/acceptance;
-- rich world authoring;
-- NPC/faction/item/objective authoring;
-- global/live-session search;
-- persistent Session;
-- persistent Scene/current-context model;
-- multi-actor live context;
-- realtime/push disclosure;
-- richer player actions;
-- knowledge belief/provenance/sharing/misinformation;
+- the pure D20 seam;
+- authorization patterns;
+- transactional/idempotent command patterns;
+- orchestration boundaries;
+- player projections;
+- history patterns;
+
+without reusing the current `ActionResolution` table unchanged.
+
+**PRODUCT CONSEQUENCE:** no candidate may justify prematurely turning the Slice 1 resolution persistence into a generic workflow engine.
+
+---
+
+# 2. Shortlist reduction
+
+The original shortlist contained four candidates.
+
+After specialist review, three remain in the Human arbitration pack:
+
+1. **A — Escape the Imperial Patrol**: bounded personal-scale combat.
+2. **B — Generate, Review and Enter a Playable Location**: bounded procedural generation used in play.
+3. **C — Prep a Contact, Find Them Instantly, Use Them in Play**: preparation/authoring + live retrieval/search.
+
+## Candidate removed from immediate arbitration
+
+### D — Follow a Rumour, Discover a Conflicting Claim
+
+**FACT**
+
+The candidate is technically viable and strongly reuses the accepted Knowledge architecture.
+
+**EXPERT POSITION**
+
+Game Design, UX, and Architecture all agree it can be bounded without introducing Believed/Doubted, a knowledge graph, sharing, or truth inference.
+
+It still requires:
+
+- source/provenance semantics;
+- a Player mental model for sourced claims;
+- a decision on implicit versus explicit conflict;
+- unusually strict disclosure/security tests.
+
+**PRODUCT RECOMMENDATION**
+
+Defer this candidate from the immediate Slice 2 arbitration.
+
+Reason:
+
+- Slice 1 already exercised the Knowledge/disclosure seam;
+- this candidate mainly deepens an already-proven domain rather than broadening the product;
+- it begins defining durable Player knowledge information architecture;
+- the security/mental-model complexity is disproportionate to the breadth of new product learning compared with A, B, or C.
+
+This is a **defer**, not a rejection.
+
+---
+
+# 3. Candidate A — Escape the Imperial Patrol
+
+## PRODUCT VALUE
+
+**FACT**
+
+This would be the first real personal-scale combat flow and the first repeated high-frequency live loop.
+
+**EXPERT POSITION**
+
+Game Design: high gameplay value and a strong test of whether the resolution seam survives repeated consequential actions.
+
+UX: high live-play value; repeated interaction cost is the central issue.
+
+Architecture: feasible inside the current monolith/PostgreSQL topology with no new infrastructure service.
+
+**PRODUCT RECOMMENDATION**
+
+Keep as a final option.
+
+The candidate should remain:
+
+> one short objective-driven encounter
+
+not:
+
+> implement the combat system.
+
+## GAME DESIGN READINESS
+
+**EXPERT POSITION — NEEDS GAME-DESIGN WORK FIRST**
+
+A small combat micro-contract must be accepted before implementation:
+
+- one encounter objective;
+- one encounter-end condition;
+- one deterministic turn-order rule;
+- one action per unit/turn;
+- one attack procedure;
+- one defence/DC rule;
+- one deterministic damage rule;
+- one short-term health track;
+- one incapacitation threshold;
+- one hostile group representation;
+- minimal range/position only if the chosen scenario requires it.
+
+Safe deferrals include:
+
+- rolled initiative;
+- reactions;
+- Vitality + Wounds;
+- armour;
+- critical injuries;
+- advanced conditions;
+- weapon catalogue/traits;
+- Force;
+- talents;
 - progression;
-- Force/Dark Side;
-- faction/world clocks;
-- campaign pulse.
+- vehicles/space combat.
 
-## UX constraints learned from Slice 1
+## UX READINESS
 
-Future surfaces should preserve the interaction guidance already recorded under `docs/ux/**`, especially:
+**EXPERT POSITION — NEEDS UX DECISIONS FIRST**
 
-- mutation feedback;
-- double-submit protection;
-- readable errors;
-- visible validation constraints;
-- correct campaign-scoped GM/Player mental model;
-- context-appropriate selection controls;
-- compact live-session interaction;
-- explicit confirmation before irreversible disclosure;
-- no leakage of persistence/implementation concepts into normal UX.
+Before UI work:
 
-The temporary Slice 1 bootstrap workspace should not be extended by inertia.
+1. choose the Player command boundary:
+   - GM-mediated;
+   - Player-active.
+2. define routine deterministic damage commit behavior;
+3. define current-turn state and encounter progression.
 
----
+Routine combat must **not** require retyping Slice 1 freeform Intent/Risk for every attack.
 
-# 2. Candidate shortlist
+The desired live flow is approximately:
 
-The following four candidates are deliberately **not ranked**.
+```text
+start bounded encounter
+-> see objective/current actor
+-> choose/resolve action
+-> see result/state change
+-> advance
+-> end when objective resolved
+```
 
-Each is a bounded end-to-end scenario rather than a horizontal subsystem.
+## ARCHITECTURE READINESS
 
----
+**EXPERT POSITION — NEEDS CONTRACT DECISIONS FIRST**
 
-# Candidate A — Cinematic Personal Combat Encounter
+Architecture can remain incremental.
 
-## NAME
+Likely persisted additions:
 
-**Escape the Imperial Patrol**
+- bounded encounter state if required for reload;
+- hostile group/unit;
+- short-term health/damage;
+- turn/order state if system-managed;
+- minimal range/position only if rules need it.
 
-## USER VALUE
+A generic Scene is not required.
 
-The GM can run a short personal-scale Star Wars combat encounter in which a Player Character and one small hostile group contest a concrete objective, such as escaping a checkpoint or reaching a shuttle.
+A narrowly scoped encounter concept is acceptable if the selected workflow requires resumable shared state.
 
-The player gains a recognizably RPG-like combat experience rather than only isolated skill resolution.
+## SECURITY IMPACT
 
-This directly addresses one of the largest still-unproven parts of the intended product.
+Moderate if GM-driven.
 
-## WHY NOW
+Higher if Player-active combat is selected.
 
-Slice 1 already proved:
+Player-active combat requires:
 
-- actor selection;
-- Intent/Risk;
-- D20 resolution;
-- consequence commit;
-- persistence;
-- GM authority;
-- history;
-- player projection.
-
-Combat is therefore a natural stress test of whether those primitives can support **repeated consequential actions in a shared encounter** without becoming cumbersome.
-
-The Human Project Owner also explicitly noted during Slice 1 arbitration that the absence of combat was disappointing, while accepting its deferral.
-
-## PRODUCT QUESTIONS ANSWERED
-
-- Does the product feel like a usable tabletop RPG assistant during actual conflict?
-- Can repeated ActionResolution interactions remain fast enough in live play?
-- Is abstract personal combat sufficient without tactical maps?
-- Does combat need a first-class encounter/context concept?
-- How much combat state should the system automate versus leave to GM adjudication?
-- Can one-player / one-hostile-group combat produce enough value before broader party support?
-
-## GAME DESIGN REQUIRED
-
-This candidate requires Game Design to define the **minimum combat contract**, not the whole combat system.
-
-At minimum:
-
-- initiative or another turn-order approach;
-- minimum action economy;
-- attack/check procedure;
-- defence or target difficulty;
-- damage model;
-- minimum health model;
-- defeat/incapacitation semantics;
-- one bounded condition if needed;
-- abstract range/position vocabulary if range matters;
-- minimum enemy/minion-group representation;
-- whether the objective can end combat before all enemies are defeated.
-
-Major open proposals such as Vitality + Wounds must not be adopted automatically merely because they were previously discussed.
-
-## UX REQUIRED
-
-UX must design a compact live encounter flow for:
-
-- current actor/turn;
-- current objective;
-- target selection;
-- range/context if relevant;
-- attack/action resolution;
-- damage/effect preview;
-- GM confirmation where interpretive consequences exist;
-- readable encounter state;
-- end-of-encounter closure.
-
-The UX must avoid converting combat into repeated long-form resolution forms.
-
-## ARCHITECTURE REQUIRED
-
-Likely additions include:
-
-- one minimal NPC/enemy representation;
-- possibly a grouped anonymous-enemy representation;
-- combat-relevant Character/NPC state;
-- health/resource persistence;
-- damage/effect mutation;
-- encounter ordering/context if required by Game Design;
-- player projection additions for combat-visible state;
-- history for meaningful combat changes;
-- authorization for any player-side combat actions if introduced.
-
-Architecture must determine whether combat needs a first-class Encounter/Scene concept or whether a bounded encounter context can remain an application construct.
+- server-derived acting Character;
+- campaign membership enforcement;
+- target references constrained to the same campaign/encounter;
+- explicit Player projections for enemy-visible state;
+- no caller-trusted actor identity.
 
 ## REUSE FROM SLICE 1
 
-Strong reuse:
+Strong reuse of:
 
-- authenticated principals;
-- campaign authorization;
-- Character;
-- Location;
-- ActionResolution;
-- D20 calculation seam;
-- pre-bound effects;
-- Apply/Close semantics;
+- auth/authz;
+- Character/Location identity;
+- D20 calculation;
+- transaction/idempotency pattern;
 - DomainEvent/history;
-- player projection;
-- transaction/idempotency patterns;
-- E2E harness.
+- projections;
+- integration/E2E test harness.
+
+**FACT:** current ActionResolution persistence should not be reused literally as a generic combat resolution model.
 
 ## NEW COMPLEXITY
 
-Substantial new complexity:
+High:
 
-- repeated actions rather than one isolated check;
-- shared encounter state;
+- repeated actions;
 - hostile actors;
-- mechanical damage/health;
-- ordering/turn semantics;
-- possible range/position;
-- combat termination conditions;
-- potentially more frequent deterministic mutations.
+- shared encounter state;
+- turn order;
+- health/damage;
+- encounter termination;
+- possibly range/position;
+- potentially Player-side commands.
+
+## WHAT WE LEARN
+
+- whether the product feels like an RPG assistant during actual conflict;
+- whether compact live interaction survives repeated use;
+- whether abstract combat works without tactical maps;
+- whether combat needs a persisted encounter concept;
+- how much deterministic combat automation is comfortable;
+- whether Player-active commands are desirable.
+
+## WHAT WE DEFER
+
+- complete combat system;
+- tactical maps;
+- detailed equipment;
+- armour;
+- advanced conditions;
+- injuries/wounds;
+- reactions;
+- Force combat;
+- NPC AI;
+- encounter builder;
+- vehicle/space combat.
 
 ## RISKS
 
-### Product
+- largest Game Design uncertainty of the final options;
+- scope explosion into full combat;
+- high-frequency UX bookkeeping;
+- premature generic encounter/rules abstractions;
+- Player-active security boundary expansion.
 
-Combat may absorb multiple slices if the first candidate is not aggressively bounded.
+## BLOCKERS
 
-### Game Design
+Before implementation:
 
-The combat system is currently one of the least mature rule areas.
+- accepted combat micro-contract;
+- GM-mediated versus Player-active choice;
+- routine deterministic damage commit policy;
+- bounded encounter persistence decision.
 
-Prematurely fixing initiative, health, armour, weapons, reactions, range and conditions simultaneously could lock in weak mechanics.
+## HUMAN DECISION
 
-### UX
-
-High risk of bookkeeping and live-session click burden.
-
-### Architecture
-
-Risk of introducing a generic encounter engine or over-generalized rules/effects framework too early.
-
-### Security
-
-If Players can directly submit combat actions, authorization boundaries become broader than Slice 1.
-
-## EXPLICIT EXCLUSIONS
-
-This candidate must not automatically include:
-
-- tactical grid/maps;
-- exact metre/square movement;
-- vehicle combat;
-- space combat;
-- full weapon catalogue;
-- full armour catalogue;
-- progression;
-- talents;
-- Force powers;
-- advanced conditions;
-- NPC AI;
-- automated GM decisions;
-- generic Rule Effect DSL;
-- large encounter builder;
-- multi-session Scene framework unless demonstrably necessary.
-
-## DEPENDENCIES / BLOCKERS
-
-**Game Design blocker:** a small accepted combat contract.
-
-**UX blocker:** a compact live encounter workflow.
-
-**Architecture review required:** minimal encounter/combat persistence and effect boundaries.
+Selecting A means deliberately accepting more cross-domain design work before implementation in exchange for testing **core RPG breadth and live gameplay** next.
 
 ---
 
-# Candidate B — Procedurally Generated Playable Location
+# 4. Candidate B — Generate, Review and Enter a Playable Location
 
-## NAME
+## PRODUCT VALUE
 
-**Generate, Review and Enter a Playable Location**
+**FACT**
 
-## USER VALUE
+Procedural generation is a major intended product differentiator but remains entirely unproven.
 
-The GM can request a generated Star Wars location/situation, inspect and edit the result, accept it into the campaign, then use at least one generated element in actual play.
+The useful product hypothesis is not "can we generate text?"
 
-The value is not "generate prose"; it is reducing preparation effort while producing campaign state that immediately supports gameplay.
+It is:
 
-## WHY NOW
+> can generation reduce GM preparation effort while producing editable campaign state that becomes genuinely playable?
 
-Procedural generation is repeatedly identified in Product and Game Design material as a major intended differentiator, but **none of it has been technically or experientially validated**.
+**PRODUCT RECOMMENDATION**
 
-Slice 1 already established:
+Keep as a final option, but only in a deliberately reduced form.
 
-- persistent Location;
-- hidden KnowledgeFragment;
-- ActionResolution;
-- GM-authoritative commit boundaries.
-
-Those foundations make it possible to test the critical Product hypothesis:
-
-> generated content can become normal editable campaign state without becoming an autonomous source of truth.
-
-## PRODUCT QUESTIONS ANSWERED
-
-- Is procedural generation actually valuable to the GM during preparation?
-- What minimum generated package is useful enough to save prep time?
-- Does the GM prefer generate -> inspect/edit -> accept?
-- Should generated content remain staged before acceptance?
-- How much structure is required before generated content feels playable rather than encyclopedic?
-- Can accepted generated content become indistinguishable from manually authored campaign state?
-- Does generation need to produce interconnected hooks rather than isolated descriptions?
-
-## GAME DESIGN REQUIRED
-
-Game Design must define a **minimum generated situation contract**.
-
-For example, one generated location may require a bounded subset of:
-
-- one notable NPC;
-- one threat/pressure;
-- one opportunity;
-- one secret/rumour;
-- one concrete player-facing hook.
-
-Game Design must review:
-
-- which categories are mandatory;
-- whether generated hooks need active/latent states;
-- what relationships between generated elements are meaningful;
-- what makes the generated result playable.
-
-This slice should not define a universal world-generation grammar.
-
-## UX REQUIRED
-
-A new preparation workflow is required:
+The selected slice must test:
 
 ```text
 Generate
--> inspect structured candidate
--> edit
--> accept / reject
--> accepted content appears as ordinary campaign content
--> use one accepted element in play
+-> Review/Edit
+-> Accept or Reject
+-> accepted content becomes normal campaign state
+-> use at least one accepted element in play
 ```
 
-UX must answer:
+## GAME DESIGN READINESS
 
-- how the GM distinguishes candidate content from canonical content;
-- what can be edited before acceptance;
-- whether partial acceptance is allowed;
-- how much generated detail is shown at once;
-- how to prevent accidental canonicalization.
+**EXPERT POSITION — NEEDS SMALL GAME-DESIGN CONTRACT FIRST**
 
-Mutation feedback and explicit commit principles from the Slice 1 UX guidance apply strongly here.
+A minimal playable generated package must be accepted.
 
-## ARCHITECTURE REQUIRED
+Game Design proposes something approximately like:
 
-Potential new architecture:
+- one Location premise;
+- one pressure or threat;
+- one opportunity;
+- one secret or rumour;
+- one concrete Player-facing hook/affordance;
+- at least two elements explicitly related.
 
-- generation application service;
-- candidate representation;
-- persistence semantics for unaccepted generated content, or explicit decision to keep candidates transient;
-- accepted transformation into normal typed campaign data;
-- additional typed domain models if NPC/hook/threat structures are accepted;
-- generator version/input metadata only if required by reproducibility needs;
-- authorization for GM-only generation;
-- possibly external model/provider integration if AI-based generation is chosen.
+A notable NPC is optional unless the chosen scenario needs one.
 
-If an external generation provider is used, this may create the first real asynchronous/long-running use case, but an outbox/worker must not be introduced unless actually required.
+A generated element must then be used in a meaningful Player choice / ActionResolution / disclosure so the test measures playability rather than prose quality.
+
+## UX READINESS
+
+**EXPERT POSITION — NEEDS UX DECISIONS FIRST**
+
+UX can support the slice, but several Product/UX contracts must be fixed before implementation:
+
+- exact generated package;
+- whole-package versus partial acceptance;
+- candidate durability:
+  - transient;
+  - survives refresh/relogin;
+- review volume;
+- what counts as "used in play".
+
+The candidate/canonical distinction must be obvious.
+
+Generation must not silently overwrite accepted state.
+
+## ARCHITECTURE READINESS
+
+**EXPERT POSITION — NEEDS CONTRACT DECISIONS FIRST**
+
+Architecture is feasible and potentially modest if the candidate stays bounded.
+
+Key rule:
+
+> accepted generated content becomes ordinary campaign state; the generator is not a second source of truth.
+
+Unaccepted candidate persistence is **not automatically required**.
+
+If candidate survival across refresh/relogin is not required, it may remain transient.
+
+If persistence is required, use a bounded staging representation rather than a generic world schema.
+
+An external provider boundary is needed only if a concrete provider is selected.
+
+No worker/broker is justified merely because an external HTTP call exists.
+
+## SECURITY IMPACT
+
+Potentially the most novel security boundary of the final options if an external provider is used.
+
+Need to define:
+
+- what campaign data may leave the application;
+- API key handling;
+- output validation;
+- generated-reference validation;
+- GM-only generation;
+- normal Knowledge projection/disclosure after canonicalization.
 
 ## REUSE FROM SLICE 1
 
-Reuse includes:
+Good reuse on the canonical side:
 
 - Campaign;
-- Location;
-- KnowledgeFragment;
-- Character where an NPC can reuse or extend the identity model;
-- Entity registry;
 - GM authorization;
-- hidden/player-visible separation;
-- persistence patterns;
-- history;
-- manual authoring concepts.
-
-## NEW COMPLEXITY
-
-- generation engine/provider;
-- structured generated content;
-- candidate versus accepted lifecycle;
-- edit/review UI;
-- potentially new NPC/hook/threat domain concepts;
-- deterministic/reproducibility questions;
-- failure/latency/error handling around generation.
-
-## RISKS
-
-### Product
-
-A generator can appear impressive while saving little actual prep time.
-
-There is also risk of validating generation quality instead of validating the campaign product.
-
-### Game Design
-
-Generated output may be descriptive but mechanically unusable.
-
-### UX
-
-Large generated payloads can create review fatigue and hidden bookkeeping.
-
-### Architecture
-
-High temptation to build generic schemas, pack engines, generator pipelines, queues, or provider abstractions prematurely.
-
-### Security
-
-External AI/provider usage may introduce data exposure, secrets/configuration, abuse and content-boundary concerns depending on implementation.
-
-## EXPLICIT EXCLUSIONS
-
-Do not expand this candidate into:
-
-- whole-planet generation;
-- galaxy generation;
-- full NPC generator;
-- full faction simulation;
-- campaign plot generation;
-- autonomous story progression;
-- AI GM;
-- background simulation;
-- generic generator plugin framework;
-- marketplace/pack system;
-- arbitrary JSON world model;
-- bulk generation of every entity type;
-- image generation unless separately justified.
-
-## DEPENDENCIES / BLOCKERS
-
-**Product blocker:** define the minimum useful generated package.
-
-**Game Design blocker:** define what makes generated output playable.
-
-**UX blocker:** candidate review/edit/accept workflow.
-
-**Architecture review required:** candidate lifecycle and provider boundary.
-
----
-
-# Candidate C — Prepare, Find and Use Campaign Content Live
-
-## NAME
-
-**Prep a Contact, Find Them Instantly, Use Them in Play**
-
-## USER VALUE
-
-The GM can prepare a small piece of campaign content before the session — for example a Location, an NPC/contact and one secret — and later retrieve that content quickly during live play, use it in an action, and reveal/update relevant information.
-
-This tests whether the application can evolve from a Slice 1 demo setup into a genuinely useful GM workspace.
-
-## WHY NOW
-
-Manual Slice 1 testing showed that the bootstrap setup screens should **not** become the future authoring product.
-
-At the same time, Product and UX work repeatedly identify:
-
-- preparation;
-- live-session speed;
-- authoring;
-- search/retrieval;
-
-as core product value.
-
-This candidate tests those assumptions while reusing almost every proven Slice 1 backend primitive.
-
-It also gives global/live search a real user outcome instead of making search a horizontal infrastructure project.
-
-## PRODUCT QUESTIONS ANSWERED
-
-- Can the product materially reduce GM friction between preparation and live play?
-- What is the minimum authoring structure a GM actually needs?
-- Is global campaign search important once content volume grows beyond the Slice 1 toy dataset?
-- Should preparation and live play be distinct workflows or merely distinct presentations?
-- Which entity types are genuinely necessary next?
-- Is an NPC/contact model more valuable than adding broader world objects first?
-- Can one prepared secret/contact/location be retrieved and used in seconds during a live scene?
-
-## GAME DESIGN REQUIRED
-
-Limited Game Design is required compared with combat or investigation.
-
-Potentially needed:
-
-- minimal NPC/contact semantics;
-- whether NPC disposition/tag data is required;
-- whether one objective/thread needs representation;
-- what information is mechanically relevant versus pure campaign content.
-
-No full social system should be designed unless the scenario proves it necessary.
-
-## UX REQUIRED
-
-This candidate is UX-heavy.
-
-UX must define:
-
-- preparation workspace;
-- create/edit flow for the minimum accepted content;
-- reusable mutation feedback patterns;
-- campaign navigation;
-- fast search/command palette/combobox behavior;
-- result grouping and disclosure-safe search;
-- transition from prep to live use;
-- compact entity summary;
-- quick reveal/action from retrieved content;
-- empty states and duplicate-submit protection.
-
-The existing interaction guidance should become visible in a real replacement surface.
-
-## ARCHITECTURE REQUIRED
-
-Likely architecture additions:
-
-- minimal NPC/contact typed model;
-- edit/update APIs for selected entity types;
-- possibly archive/deactivate if needed by the workflow;
-- PostgreSQL-backed campaign search;
-- explicit GM search projection;
-- player-safe search only if the candidate requires player search;
-- indexing appropriate for the small expected dataset;
-- richer read models for entity summary/live retrieval.
-
-A dedicated search engine is not justified for this candidate.
-
-## REUSE FROM SLICE 1
-
-Very high reuse:
-
-- campaign/auth;
-- Entity registry;
-- Character;
+- Entity;
 - Location;
 - KnowledgeFragment;
-- ActionResolution;
-- disclosure;
-- player projection;
-- history;
-- React/FastAPI/PostgreSQL stack;
-- tests.
-
-## NEW COMPLEXITY
-
-- real authoring/edit UX;
-- at least one new content type, probably NPC/contact;
-- update/edit lifecycle;
-- cross-entity navigation;
-- search/retrieval;
-- larger campaign read models.
-
-## RISKS
-
-### Product
-
-Could become "build the admin UI" rather than a vertical slice.
-
-The scenario must stay anchored in prepare -> retrieve -> use during play.
-
-### Game Design
-
-Risk of prematurely defining social/relation mechanics just because an NPC exists.
-
-### UX
-
-High design cost. This is where temporary prototype patterns must be replaced rather than polished.
-
-### Architecture
-
-Search can trigger premature search-service abstraction; authoring can trigger generic CRUD frameworks.
-
-### Security
-
-Any future player search must preserve explicit disclosure projections. For the initial candidate, GM-only search may be enough.
-
-## EXPLICIT EXCLUSIONS
-
-Do not turn this candidate into:
-
-- complete campaign CMS;
-- every entity type;
-- generic entity editor;
-- global Principal directory;
-- Elasticsearch/OpenSearch;
-- graph database;
-- full relationship system;
-- faction management;
-- procedural generation;
-- Scene/Session persistence unless directly proven necessary;
-- full journal/wiki;
-- collaborative rich-text editor.
-
-## DEPENDENCIES / BLOCKERS
-
-**UX is the primary blocker**: the scenario requires an actual replacement workflow rather than extension of the Slice 1 cards.
-
-**Product decision required:** exact minimum content types.
-
-**Architecture review required:** bounded search and edit contracts.
-
-Game Design review is needed only for any NPC/contact fields with mechanical meaning.
-
----
-
-# Candidate D — Investigation, Rumour and Conflicting Knowledge
-
-## NAME
-
-**Follow a Rumour, Discover a Conflicting Claim**
-
-## USER VALUE
-
-Players can engage with information as gameplay rather than receiving a single binary secret reveal.
-
-A character may learn a rumour, investigate it, discover a conflicting or corroborating claim, and see their personal knowledge state update without exposing GM truth.
-
-This starts exercising one of the project's more distinctive persistent-campaign concepts.
-
-## WHY NOW
-
-Slice 1 already proved the hard security/architecture seam:
-
-- hidden KnowledgeFragment;
-- CharacterKnowledge;
-- absence = Unknown;
-- player projection;
-- GM-side veracity hidden from Player;
-- explicit disclosure.
-
-The next logical knowledge slice could test whether this model creates **interesting gameplay**, rather than only secure disclosure plumbing.
-
-This candidate also reuses ActionResolution without requiring combat or generation.
-
-## PRODUCT QUESTIONS ANSWERED
-
-- Is character-specific knowledge a meaningful product differentiator?
-- Do players value a personal record of rumours/discoveries?
-- Does the GM benefit from tracking conflicting claims separately from canonical truth?
-- How much epistemic complexity is useful before bookkeeping becomes burdensome?
-- Is information provenance important in actual play?
-- Should Players be able to share information through the product, or is GM-mediated disclosure enough initially?
-- Can knowledge gameplay support investigation without creating a full journal system?
-
-## GAME DESIGN REQUIRED
-
-This candidate requires substantial Game Design ownership.
-
-Game Design must decide a **small epistemic contract**, potentially including some subset of:
-
-- Aware;
-- Believed;
-- Doubted;
-- source/provenance;
-- contradiction handling;
-- character-to-character sharing;
-- GM adjudication of belief changes.
-
-The candidate should not automatically accept all previously discussed states.
-
-It also needs one investigation procedure:
-
-- what fictional action produces a new claim;
-- whether an ActionResolution is used;
-- how failure changes the situation;
-- whether a source can be unreliable without exposing truth.
-
-## UX REQUIRED
-
-UX must design:
-
-- player knowledge view;
-- clear distinction between "my character knows this" and "this is true";
-- source/provenance display if selected;
-- presentation of conflicting claims;
-- GM reveal/adjudication controls;
-- optional player sharing workflow if included;
-- prevention of accidental GM-truth leakage.
-
-This is a major mental-model challenge.
-
-## ARCHITECTURE REQUIRED
-
-Potential additions:
-
-- expanded CharacterKnowledge state if accepted;
-- provenance/source data if accepted;
-- relationships between claims or contradiction metadata only if truly required;
-- player projection updates;
-- sharing mutation/authorization if included;
-- history of knowledge acquisition/change;
-- potentially support for revealing to multiple recipients.
-
-Architecture must preserve:
-
-- KnowledgeFragment as claim;
-- gm_veracity as GM-only truth metadata;
-- absence of CharacterKnowledge = Unknown.
-
-## REUSE FROM SLICE 1
-
-Excellent reuse:
-
-- KnowledgeFragment;
-- CharacterKnowledge;
-- player projection;
-- GM-only veracity;
-- ActionResolution;
-- pre-bound disclosure;
-- Apply semantics;
-- campaign authorization;
+- Character if needed;
+- persistence transactions;
+- disclosure rules;
 - history.
 
 ## NEW COMPLEXITY
 
-- epistemic states beyond Aware;
-- provenance;
-- multiple claims about the same subject;
-- possibly player-to-player sharing;
-- richer player knowledge UX;
-- potentially more nuanced GM adjudication.
+Medium to high:
+
+- generator/provider;
+- candidate/canonical lifecycle;
+- review/edit/accept UI;
+- structured generated package;
+- provider latency/errors;
+- possibly new typed supporting state.
+
+## WHAT WE LEARN
+
+- whether procedural generation actually saves GM preparation time;
+- how much generated structure is useful;
+- whether review cost cancels generation value;
+- whether staged acceptance is necessary;
+- whether accepted generated content fits naturally into ordinary campaign state;
+- whether generation can create playable situations rather than lore dumps.
+
+## WHAT WE DEFER
+
+- galaxy/planet generation;
+- full NPC/faction/item generation;
+- active/latent/dormant systems;
+- generator plugin framework;
+- background simulation;
+- AI GM;
+- image generation;
+- generic orchestration/jobs;
+- reproducibility framework unless a concrete need emerges.
 
 ## RISKS
 
-### Product
+- highest throwaway-UI risk if lifecycle decisions are not fixed first;
+- impressive demo but weak actual prep value;
+- provider/infrastructure overengineering;
+- generated prose with poor gameplay affordance;
+- accidental canonicalization;
+- external data leakage.
 
-Could become a sophisticated feature before basic campaign/combat/generation breadth exists.
+## BLOCKERS
 
-### Game Design
+Before implementation:
 
-Risk of over-modeling belief and creating bookkeeping rather than play.
+- exact minimum generated package;
+- "used in play" acceptance criterion;
+- whole versus partial acceptance;
+- candidate durability requirement;
+- concrete generator/provider mode;
+- external-data disclosure boundary if applicable.
 
-### UX
+## HUMAN DECISION
 
-Very high risk of confusing "truth", "claim", "aware", "believed", "source" and "player-visible" concepts.
-
-### Architecture
-
-Potential for overly generic graph/claim/provenance modeling.
-
-### Security
-
-Highest disclosure sensitivity among candidates. Projection mistakes can reveal GM truth or other characters' private information.
-
-## EXPLICIT EXCLUSIONS
-
-Do not automatically add:
-
-- full journal/wiki;
-- semantic knowledge graph;
-- truth inference engine;
-- automatic belief propagation;
-- information hazards;
-- AI summarization;
-- faction-wide knowledge;
-- universal provenance graph;
-- collaborative note-taking;
-- search across GM-hidden knowledge for Players.
-
-## DEPENDENCIES / BLOCKERS
-
-**Game Design is the primary blocker:** minimum epistemic semantics.
-
-**UX blocker:** understandable player/GM mental model.
-
-**Architecture review required:** provenance/state representation and projection security.
+Selecting B means prioritizing **product differentiation and GM preparation automation** next, while accepting more Product/UX lifecycle decisions before implementation.
 
 ---
 
-# 3. Candidate areas examined but not shortlisted as standalone slices
+# 5. Candidate C — Prep a Contact, Find Them Instantly, Use Them in Play
 
-## Global / live-session search
+## PRODUCT VALUE
 
-**Not shortlisted alone.**
+**FACT**
 
-Search is valuable, but "implement search" is horizontal and does not prove a complete user outcome.
+Slice 1 proved the backend core but manual testing showed that its bootstrap/admin surfaces are not the desired GM product.
 
-It is incorporated into Candidate C, where success is measured by whether the GM can prepare content and retrieve/use it rapidly in play.
+This candidate directly tests:
 
-## Stronger campaign preparation / authoring workflow
+> can the GM prepare something earlier, retrieve it in seconds during play, and act on it without dropping out of the session flow?
 
-**Not shortlisted as a generic authoring project.**
+**PRODUCT RECOMMENDATION**
 
-A broad authoring redesign risks becoming a CMS build.
+Keep as a final option and treat it as the most implementation-ready candidate.
 
-It is represented by Candidate C as one bounded prepare -> find -> use workflow.
+The slice must remain:
 
-## Live-session context / Scene or equivalent
+```text
+prepare Contact
+-> edit if needed
+-> find rapidly in campaign search
+-> open compact summary
+-> use/reveal/resolve something from it in play
+```
 
-**Not shortlisted alone.**
+not:
 
-Creating a persistent `Scene` merely because it sounds useful would be domain-first design.
+> build the campaign CMS.
 
-Candidate A may demonstrate that combat requires encounter context.
+## GAME DESIGN READINESS
 
-Candidate C may demonstrate that live navigation benefits from contextual state.
+**EXPERT POSITION — GAME-DESIGN READY**
 
-A persistent Scene should be introduced only when a selected user workflow proves the need.
+Very little new Game Design is required.
 
-## Player-facing realtime / disclosure improvements
+Minimum contact semantics may be:
 
-**Not shortlisted alone.**
+- name/identity;
+- short fictional role;
+- relevant location/association;
+- motivation/immediate want only if the scenario needs it;
+- relevant information/secret only if used.
 
-Replacing manual refresh with polling, SSE or WebSockets is primarily a delivery mechanism.
+No relationship/disposition/reputation/social-combat subsystem is required.
 
-It should be introduced when a future slice demonstrates that delayed/manual disclosure materially harms the selected user experience.
+If an uncertain action occurs, existing when-to-roll semantics can be reused conceptually.
 
-Realtime infrastructure must not become the goal of a slice.
+## UX READINESS
 
-## Generic "improve the frontend"
+**EXPERT POSITION — UX READY FOR A SLICE**
 
-**Rejected as a slice.**
+UX can bound the workflow without a full product information architecture.
 
-The Slice 1 UX guidance is important, but implementing generic error normalization, mutation state infrastructure and new component libraries without a selected workflow would be horizontal work.
+Minimum durable surfaces:
 
-A later slice should consume those principles while delivering new user value.
+Preparation:
+```text
+create Contact in context
+-> save
+-> edit later if necessary
+```
 
-## Session persistence
+Live:
+```text
+open campaign search
+-> type/select
+-> compact summary
+-> direct relevant action/reveal/use
+```
 
-**Not shortlisted alone.**
+The search should remain campaign-content search, not Principal discovery.
 
-A Session record should not be created before a concrete workflow needs session-level grouping, notes, participants or resume semantics.
+This is the strongest candidate for applying the accepted UX guidance in a real replacement surface instead of extending the Slice 1 bootstrap cards.
 
-## Full procedural world generation
+## ARCHITECTURE READINESS
 
-**Rejected as too broad.**
+**EXPERT POSITION — ARCHITECTURALLY READY**
 
-Candidate B deliberately limits generation to one playable location/situation.
+No new platform capability is required.
 
-## Full combat system
+Bounded additions:
 
-**Rejected as too broad.**
+- minimal contact-specific fields if Character is insufficient;
+- edit/update commands;
+- GM campaign-search query/read model;
+- compact entity summary projection;
+- ordinary PostgreSQL indexes/search.
 
-Candidate A deliberately limits combat to one short personal-scale objective encounter.
+No Elasticsearch/OpenSearch, search service abstraction, Scene, Session, async pipeline, cache, broker, or realtime transport is required.
 
----
+## SECURITY IMPACT
 
-# 4. Cross-candidate comparison dimensions for reviewers
+Low to moderate.
 
-Reviewers should not rank candidates by personal preference alone.
+- GM campaign-content search must be campaign-scoped.
+- It must not become identity/Principal search.
+- GM-only notes/secrets remain GM-only.
+- Player search is not required.
+- If a Contact triggers Player disclosure, existing explicit projection rules apply.
 
-For each candidate, assess:
+## REUSE FROM SLICE 1
 
-1. **User-value strength** — does it materially improve an actual campaign/session?
-2. **Learning value** — does it answer an important unvalidated Product hypothesis?
-3. **Vertical completeness** — does it cross UX, rules, API, persistence, permissions and tests where relevant?
-4. **Reuse** — does it compound the Slice 1 investment?
-5. **Novelty risk** — how many completely new systems must be designed at once?
-6. **Solo-developer size** — can the candidate be bounded to a short implementation cycle?
-7. **Future leverage** — does it establish primitives that several later slices can reuse?
-8. **Scope containment** — can obvious domino features be explicitly excluded?
-9. **Playtestability** — can success be evaluated with a real GM/player scenario rather than technical checks only?
-10. **Decision maturity** — how many unresolved domain decisions must be made before implementation?
+Highest literal reuse of the final options:
 
-No weighting is fixed in this document.
+- current monolith;
+- PostgreSQL;
+- campaign/auth/authz;
+- Entity;
+- Character;
+- Location;
+- KnowledgeFragment;
+- disclosure;
+- history;
+- D20 seam if needed;
+- integration/E2E infrastructure.
 
----
+## NEW COMPLEXITY
 
-# 5. Review requests
+Moderate:
 
-## Game Design review requested
+- first real durable authoring/edit workflow;
+- Contact/NPC data;
+- bounded campaign search;
+- compact live summary/drawer;
+- cross-entity retrieval.
 
-Game Design should focus on:
+## WHAT WE LEARN
 
-### Candidate A — Combat
-- minimum viable combat procedure;
-- initiative/turn-order need;
-- minimum health/damage semantics;
-- range/position need;
-- minion-group viability;
-- objective-driven encounter closure;
-- which combat questions can safely remain deferred.
+- whether the application can become genuinely useful to a GM outside a proof/demo;
+- whether prep and live play need distinct surfaces;
+- what minimum NPC/contact structure is actually useful;
+- whether campaign search has high live-session value;
+- what retrieval interaction is fast enough at the table;
+- whether the accepted UX guidance works in a durable surface.
 
-### Candidate B — Generation
-- minimum generated situation contract;
-- mandatory versus optional hook categories;
-- what makes generated content playable;
-- whether latent/active generated hooks are necessary immediately.
+## WHAT WE DEFER
 
-### Candidate C — Prep/Search
-- minimum mechanically meaningful NPC/contact data;
-- whether any relation/disposition mechanic is actually required.
+- full NPC schema;
+- relationship mechanics;
+- reputation/factions;
+- social combat;
+- Principal discovery;
+- Player-wide search;
+- generic CMS/entity editor;
+- full application IA;
+- Scene/Session;
+- Elasticsearch;
+- procedural generation.
 
-### Candidate D — Knowledge
-- minimum epistemic vocabulary;
-- provenance need;
-- contradiction semantics;
-- sharing semantics;
-- minimum investigation procedure.
+## RISKS
 
-Game Design should also identify any candidate that secretly requires much more rules work than Product has estimated.
+- lowest technical risk, but also less new game-system learning;
+- danger of turning into generic CRUD/admin work;
+- search may be low-value until campaign content volume grows;
+- possible premature freezing of navigation/entity taxonomy.
 
-## UX review requested
+## BLOCKERS
 
-UX should focus on:
+No major specialist blocker.
 
-### Candidate A
-- live combat interaction cost;
-- readable shared encounter state;
-- whether repeated resolution remains compact.
+Before implementation Product still needs to fix:
 
-### Candidate B
-- generate/review/edit/accept workflow;
-- canonical-versus-candidate mental model;
-- review fatigue.
+- exact scenario;
+- minimum Contact fields;
+- exact "use in play" action;
+- search semantics sufficient for the scenario.
 
-### Candidate C
-- preparation/live workflow;
-- replacement of temporary bootstrap UI;
-- campaign navigation/search;
-- fast retrieval and use during session.
+These are bounded slice-definition decisions, not prerequisite platform work.
 
-### Candidate D
-- player knowledge mental model;
-- conflicting claims and source display;
-- disclosure/sharing controls.
+## HUMAN DECISION
 
-UX should also identify which candidate best exercises the durable interaction principles now in `docs/ux/interaction-principles.md`.
-
-## Architecture review requested
-
-Architecture should focus on incremental cost and whether each candidate can remain bounded.
-
-### Candidate A
-- encounter/combat persistence;
-- NPC/minion representation;
-- repeated deterministic effects;
-- whether Scene/Encounter becomes necessary.
-
-### Candidate B
-- candidate generation lifecycle;
-- external-provider boundary;
-- persistence-before-acceptance;
-- whether asynchronous infrastructure is actually necessary.
-
-### Candidate C
-- edit/update lifecycle;
-- PostgreSQL search;
-- read models;
-- NPC/contact model;
-- avoiding generic CRUD/search architecture.
-
-### Candidate D
-- knowledge-state extension;
-- provenance;
-- projection security;
-- avoiding graph over-modeling.
-
-Architecture should explicitly call out any candidate likely to trigger horizontal infrastructure disproportionate to user value.
+Selecting C means prioritizing **GM workflow maturity, durable UX, and fast delivery** over introducing a major new game mechanic or differentiating generator in the next slice.
 
 ---
 
-# 6. Human/Product questions after specialist review
+# 6. Cross-domain comparison
 
-The Product Lead should only ask the Human Project Owner to arbitrate questions that remain materially different after specialist review.
+## FACT
 
-Likely eventual arbitration dimensions include:
+No final candidate requires:
 
-- whether the next learning priority is **core RPG breadth** (combat), **product differentiation** (generation or knowledge), or **GM workflow maturity** (prep/search);
-- how much Game Design uncertainty is acceptable before implementation;
-- whether near-term value should target live play or GM preparation;
-- whether a higher-novelty slice is worth slower delivery for a solo developer.
+- WebSockets/SSE as a prerequisite;
+- broker/outbox worker;
+- microservices;
+- search infrastructure outside PostgreSQL;
+- generic Rule Effect DSL;
+- generic workflow engine;
+- generic Scene/Session platform;
+- generic plugin/provider framework.
 
-No such choice is made in this PR.
+## FACT
+
+Candidate readiness differs materially:
+
+### A — Combat
+
+- Game Design: not ready until micro-contract accepted.
+- UX: not ready until repeated-action/Player-command/commit policy accepted.
+- Architecture: incremental but dependent on those contracts.
+
+### B — Generation
+
+- Game Design: small playable-situation contract required.
+- UX: lifecycle/durability/acceptance decisions required.
+- Architecture: feasible after those Product/UX contracts.
+
+### C — Prep/Search
+
+- Game Design: ready.
+- UX: ready for a bounded slice.
+- Architecture: ready.
+- Remaining decisions are normal Product slice-definition work.
+
+## PRODUCT RECOMMENDATION
+
+**Recommend Option C as the default next slice.**
+
+Reasoning:
+
+1. It directly addresses the biggest weakness exposed by the Slice 1 manual test: the application works, but does not yet feel like a durable GM product.
+2. It has the highest reuse and lowest throwaway risk.
+3. It exercises the accepted UX guidance in a real replacement surface.
+4. It builds durable authoring/search/read-model primitives that can support later combat and generation workflows.
+5. It has no major prerequisite Game Design or infrastructure decision.
+6. It is best aligned with solo-developer delivery constraints.
+
+This recommendation is **not** equivalent to saying C has the highest long-term product differentiation.
+
+### Product view of A
+
+A has the strongest **core RPG/gameplay learning value** and would be a valid choice if the Human Project Owner wants to prioritize making the application feel more like a game immediately.
+
+The cost is a real Game Design/UX design phase before implementation.
+
+### Product view of B
+
+B has the strongest **differentiation learning value**.
+
+The cost is greater Product/UX lifecycle uncertainty and the highest risk of designing throwaway review surfaces or premature generation infrastructure.
 
 ---
 
-# 7. Selection gate
+# 7. Human Arbitration Pack
 
-A Slice 2 candidate should be accepted only after:
+No candidate is accepted by this document.
 
-1. Game Design review identifies required mechanics and blockers;
-2. UX review confirms a bounded usable workflow;
-3. Architecture review confirms the slice can remain incremental;
-4. Product consolidates the reviews;
-5. the Human Project Owner arbitrates any remaining material trade-off;
-6. the selected slice is written into `docs/planning/current-slice.md`;
-7. implementation begins only after that acceptance.
+The Human Project Owner should choose the next learning priority from the three options below.
 
-Until then, all four candidates remain **PROPOSED**.
+---
+
+## OPTION A — Escape the Imperial Patrol
+
+### SCOPE
+
+One short objective-driven personal combat encounter:
+
+- one Player Character;
+- one hostile group/unit;
+- one encounter objective;
+- one bounded turn rule;
+- one attack/defence procedure;
+- one damage/health model;
+- explicit encounter termination;
+- no tactical map.
+
+### PRIMARY USER VALUE
+
+Run an actual Star Wars personal combat scene with minimal bookkeeping.
+
+### WHY NOW
+
+Slice 1 proved isolated resolution. This tests repeated live gameplay under pressure and begins validating the RPG system itself.
+
+### WHAT IT VALIDATES
+
+- combat viability without VTT/grid;
+- repeated resolution UX;
+- health/damage/turn semantics;
+- objective-driven combat;
+- Player versus GM command responsibility;
+- need for a persisted encounter concept.
+
+### MAIN RISKS
+
+- largest rules-design burden;
+- repeated-click UX;
+- scope expansion into full combat;
+- premature generic encounter/resolution abstractions.
+
+### WHAT IT DOES NOT INCLUDE
+
+- tactical maps;
+- full initiative subsystem;
+- reactions;
+- Vitality/Wounds;
+- armour;
+- weapon catalogue;
+- advanced conditions;
+- Force/talents;
+- vehicle/space combat.
+
+### EXPECTED CROSS-DOMAIN WORK BEFORE IMPLEMENTATION
+
+Game Design:
+- accept combat micro-contract.
+
+Product + UX + Game Design:
+- GM-mediated vs Player-active;
+- routine deterministic damage commit policy.
+
+UX:
+- compact encounter interaction.
+
+Architecture:
+- bounded encounter persistence after those contracts are fixed.
+
+---
+
+## OPTION B — Generate, Review and Enter a Playable Location
+
+### SCOPE
+
+Generate one bounded playable location/situation, review/edit it, explicitly accept/reject it, convert accepted output into ordinary campaign state, then use one generated element in play.
+
+### PRIMARY USER VALUE
+
+Reduce GM preparation effort while producing immediately playable campaign material.
+
+### WHY NOW
+
+Procedural generation is a major intended differentiator and remains completely unvalidated.
+
+### WHAT IT VALIDATES
+
+- actual generation value after review cost;
+- candidate versus canonical lifecycle;
+- minimum useful generated structure;
+- generated-content playability;
+- how generation integrates with normal persistent campaign state.
+
+### MAIN RISKS
+
+- generation demo with little real prep value;
+- review fatigue;
+- lifecycle ambiguity;
+- provider/data-security concerns;
+- premature queues/provider frameworks/world schemas.
+
+### WHAT IT DOES NOT INCLUDE
+
+- full world/planet/galaxy generation;
+- autonomous story generation;
+- background simulation;
+- AI GM;
+- generic provider/plugin framework;
+- image generation;
+- full NPC/faction/item generation.
+
+### EXPECTED CROSS-DOMAIN WORK BEFORE IMPLEMENTATION
+
+Product + Game Design:
+- exact generated package;
+- "used in play" criterion.
+
+Product + UX:
+- whole versus partial acceptance;
+- candidate durability.
+
+Architecture + Security:
+- concrete provider boundary;
+- what campaign data may leave the application;
+- staging only if durability requires it.
+
+---
+
+## OPTION C — Prep a Contact, Find Them Instantly, Use Them in Play
+
+### SCOPE
+
+Prepare one Contact/NPC with only scenario-relevant information, edit it, find it quickly through campaign-content search during live play, open a compact summary, then use/reveal/resolve something from it.
+
+### PRIMARY USER VALUE
+
+Turn the application from a working prototype into a more credible GM preparation + live-session tool.
+
+### WHY NOW
+
+Slice 1 proved the core backend and exposed that the temporary setup UI is not a durable product workflow.
+
+This candidate has the strongest cross-domain readiness and highest literal reuse.
+
+### WHAT IT VALIDATES
+
+- real GM preparation workflow;
+- durable authoring/edit interaction;
+- live search/retrieval value;
+- minimum useful Contact/NPC shape;
+- prep versus live UX;
+- whether the Slice 1 UX principles work in a real replacement surface.
+
+### MAIN RISKS
+
+- becoming generic CRUD/CMS work;
+- low game-system learning compared with combat;
+- search usefulness may be limited in very small campaigns;
+- premature information-architecture decisions.
+
+### WHAT IT DOES NOT INCLUDE
+
+- complete NPC schema;
+- relationships/reputation;
+- factions;
+- social combat;
+- Principal directory/search;
+- Player global search;
+- generic entity editor;
+- full navigation redesign;
+- Scene/Session;
+- procedural generation.
+
+### EXPECTED CROSS-DOMAIN WORK BEFORE IMPLEMENTATION
+
+Product:
+- exact scenario;
+- minimum Contact fields;
+- exact "use in play" outcome.
+
+UX:
+- bounded prep/search/live-detail workflow.
+
+Architecture:
+- PostgreSQL-backed GM search and small edit/read-model contracts.
+
+Game Design:
+- only review fields with actual mechanical meaning.
+
+---
+
+# 8. Product recommendation
+
+**PRODUCT RECOMMENDATION: OPTION C — Prep a Contact, Find Them Instantly, Use Them in Play.**
+
+This is the best default next step for a solo developer because it combines:
+
+- high practical GM value;
+- strong Slice 1 reuse;
+- low architecture risk;
+- low Game Design prerequisite cost;
+- direct application of the Slice 1 UX learnings;
+- likely durable product surfaces;
+- short path to another end-to-end playtest.
+
+If the Human Project Owner instead wants the next slice to maximize **gameplay-system learning**, choose **Option A**.
+
+If the priority is to maximize **differentiation learning**, choose **Option B**.
+
+---
+
+# 9. Selection gate
+
+No Slice 2 is ACCEPTED yet.
+
+After Human arbitration:
+
+1. record the selected option as a Product decision;
+2. have the relevant specialists finalize only the blocking contracts identified above;
+3. write the exact accepted Slice 2 scenario and acceptance criteria;
+4. update `docs/planning/current-slice.md`;
+5. only then authorize implementation.
+
+PR #10 must remain unmerged until the Human Project Owner arbitrates.
