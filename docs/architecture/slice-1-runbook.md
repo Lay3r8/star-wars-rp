@@ -24,6 +24,8 @@ AUTH_COOKIE_SECURE=false
 
 When the browser-facing application is exposed through an HTTPS tunnel, set it to `true`.
 
+Set `DEV_ALLOWED_HOSTS` to the exact external tunnel hostname (comma-separated if more than one host is required). Do not use a wildcard host policy.
+
 ## Run the development stack
 
 ```sh

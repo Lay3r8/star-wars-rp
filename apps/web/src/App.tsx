@@ -56,7 +56,7 @@ function ErrorBox({ error }: { error: string | null }) {
 function AuthScreen({ onAuthenticated }: { onAuthenticated: (p: Principal) => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("password123");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
