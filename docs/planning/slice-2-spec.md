@@ -1,6 +1,6 @@
 # Slice 2 Specification — Prepare, Find and Use a Contact in Play
 
-**Status:** PROPOSED — CROSS-DOMAIN REVIEW REQUIRED  
+**Status:** PROPOSED — REVIEWS CONSOLIDATED — READY FOR ACCEPTANCE  
 **Owner:** Product Lead  
 **Selected direction:** Option C from `docs/planning/slice-2-candidates.md`  
 **Implementation authorization:** NOT GRANTED
@@ -34,6 +34,38 @@ The current Slice 1 bootstrap UI and Slice-1-specific `ActionResolution` persist
 
 ---
 
+# Cross-domain review consolidation
+
+The UX, Game Design, and Architecture reviews are complete.
+
+## Comment disposition
+
+| Review comment | Classification | Resolution |
+|---|---|---|
+| UX: Contact preparation must author the one prepared information item inside the Contact workflow | CROSS-DOMAIN DECISION | Accepted. Inline authoring is now mandatory for the acceptance path. No separate Knowledge administration step is required. |
+| Architecture: inline authoring must provide the required `gm_veracity` value | CROSS-DOMAIN DECISION | Accepted. The preparation flow includes a bounded GM-facing **Truth status** field with `TRUE / FALSE / UNKNOWN`. No silent default. |
+| UX: do not make the GM select the only prepared information | CLARIFICATION | Accepted. Exactly one item exists; compact summary exposes a direct Reveal action. |
+| UX: define 0/1/many search behavior | DOMAIN CHANGE | Accepted into the UX contract. |
+| UX: campaign search entry point must not freeze global IA | ACCEPT WITHOUT CHANGE / CLARIFICATION | Retained and clarified. |
+| UX: compact summary should prioritize name/role/Location/information; GM note secondary | DOMAIN CHANGE | Accepted. |
+| UX: Location prerequisite must be explicit; do not add Location authoring | CLARIFICATION | Accepted. Slice 2 assumes a pre-existing Location. |
+| UX + Game Design: Player-visible source provenance can be deferred | SAFE TO DEFER | Accepted. Player receives claim only; no persisted provenance/source label in Slice 2. |
+| Game Design: Contact needs no social/disposition/reputation/stat subsystem | ACCEPT WITHOUT CHANGE | Confirmed. |
+| Game Design: no mandatory roll in the acceptance path | ACCEPT WITHOUT CHANGE | Confirmed. |
+| Game Design: direct Reveal is sufficient "use in play" | ACCEPT WITHOUT CHANGE | Confirmed. |
+| Architecture: reuse Character identity plus a narrow Contact typed profile/table | DOMAIN CHANGE | Accepted as the minimum Architecture contract for this slice. |
+| Architecture: replacing prepared information creates a new KnowledgeFragment; already revealed knowledge remains unchanged | DOMAIN CHANGE | Accepted. |
+| Architecture: Reveal bypasses ActionResolution and uses direct synchronous application orchestration | ACCEPT WITHOUT CHANGE / CLARIFICATION | Confirmed. |
+| Architecture: PostgreSQL `ILIKE` search with small cap, no trigram/full-text yet | DOMAIN CHANGE | Accepted. |
+| Architecture: Contact create/edit need no DomainEvent by default; Reveal does | SAFE TO DEFER / DOMAIN CHANGE | Accepted. Authoring history is deferred; disclosure history remains meaningful. |
+| Architecture: integration/E2E test matrix | DOMAIN CHANGE | Accepted into the final test contract. |
+
+No review introduces a contradiction with an ACCEPTED decision.
+
+No material Human arbitration remains after these changes.
+
+---
+
 # 1. Exact user scenario
 
 ## Scenario
@@ -56,7 +88,7 @@ The GM:
 3. finds Nira Voss;
 4. opens a compact Contact summary without leaving the live workflow;
 5. sees the Contact's role, associated Location, and GM-only prepared information;
-6. chooses the exact prepared information to reveal to the assigned Player Character;
+6. uses the direct **Reveal…** action for the Contact's single prepared information item;
 7. sees an explicit disclosure preview showing:
    - recipient Character;
    - exact player-visible claim;
@@ -138,10 +170,16 @@ A Contact must expose the following Product-level fields/concepts:
    - not Player-visible.
 
 5. **Prepared information known by the Contact**
-   - exactly one KnowledgeFragment is sufficient for Slice 2 acceptance;
-   - the exact persistence representation is Architecture-owned;
-   - this association does not mean the Contact owns canonical truth;
+   - exactly one information item is required for Slice 2 acceptance;
+   - the GM authors its player-visible claim text **inside the Contact preparation flow**;
+   - the GM also supplies a bounded **Truth status** in domain language:
+     - `TRUE`;
+     - `FALSE`;
+     - `UNKNOWN`;
+   - persistence uses the existing Knowledge model, but the UX must not require the GM to pre-create or select a technical `KnowledgeFragment`;
+   - the Contact-to-information association does not mean the Contact owns canonical truth;
    - it means the GM has prepared this Contact as a fictional source for that claim.
+   - reuse of an existing claim may be added later or opportunistically, but is not required for the acceptance path.
 
 ## Explicitly not required
 
@@ -182,14 +220,17 @@ The GM must be able to complete the following preparation flow:
 
 ```text
 Create Contact
--> enter minimum fields
+-> enter name / role / existing Location / optional GM note
+-> author one information item + Truth status
 -> Save
 -> see clear success state
 -> optionally Edit
 -> Save changes
 ```
 
-The Contact becomes normal durable campaign state immediately after successful Save.
+The Contact and its one prepared information item become normal durable campaign state immediately after successful Save.
+
+**Scenario precondition:** at least one Location already exists in the campaign; Dock 47 is test/setup state. Slice 2 does not add Location authoring merely to satisfy this prerequisite.
 
 There is no draft/candidate lifecycle in this slice.
 
@@ -203,7 +244,8 @@ UX must define a bounded durable authoring surface that:
 - prevents accidental duplicate submission while Save is pending;
 - follows UX-A02 for actionable errors;
 - exposes known constraints before submission per UX-A03;
-- uses an authorized Location selector consistent with UX-A06;
+- uses an authorized Location selector consistent with UX-A06 and a clear empty state when no Location exists;
+- authors the single prepared information item inline, including player-visible claim text and GM-facing Truth status;
 - does not expose raw IDs or persistence concepts;
 - makes Edit an ordinary modification of accepted campaign state.
 
@@ -220,8 +262,14 @@ Architecture must define:
 - how Contact identity/persistence fits the accepted Entity + typed-table model;
 - whether the current Character model can appropriately represent a non-player Contact or whether a dedicated typed Contact/NPC concept is required;
 - authorized create/update commands;
-- same-campaign validation for the Location reference and Knowledge association;
-- history/event behavior for meaningful create/edit operations if required.
+- same-campaign validation for the Location reference and prepared information;
+- one atomic Create Contact transaction that creates:
+  1. Entity/Character identity;
+  2. Contact typed state;
+  3. the new KnowledgeFragment with explicit `gm_veracity`;
+  4. the Contact -> KnowledgeFragment association;
+- edit semantics for replacing prepared information without rewriting already revealed knowledge;
+- history/event behavior where materially useful.
 
 Product does **not** prescribe the table/schema.
 
@@ -253,6 +301,19 @@ Open campaign search
 The search entry point is a GM-only **campaign-content search entry point** for this slice.
 
 It is not Principal/account discovery.
+
+### Minimum 0 / 1 / many behavior
+
+- **0 results:** retain the query and show a clear `No Contacts found` state; do not auto-create.
+- **1 result:** show one normal selectable row; Enter/click opens it; do not auto-open.
+- **many results:** each row shows **name + role + Location** for disambiguation.
+- duplicate names are valid.
+- minimum keyboard behavior:
+  - Arrow Up/Down changes highlighted result;
+  - Enter opens the highlighted result;
+  - Escape closes search/summary and returns to the prior live context.
+
+A keyboard shortcut to focus/open search is useful but not required for acceptance.
 
 ## Interaction target
 
@@ -288,11 +349,15 @@ UX must define:
 
 The compact summary must show, at minimum:
 
+**Primary / immediately visible**
 - Contact name;
 - role;
 - associated Location;
-- GM-only note if present;
-- prepared information available for reveal.
+- the single prepared information item;
+- direct **Reveal…** affordance.
+
+**Secondary**
+- GM-only note if present; it may be collapsed/de-emphasized and must not consume unnecessary live-session space.
 
 It must not expose database IDs, raw KnowledgeFragment terminology or internal storage state.
 
@@ -344,9 +409,10 @@ Product does not require fuzzy spelling correction, semantic search or ranking m
 Minimum deterministic ordering:
 
 1. name matches before role-only matches;
-2. within the same match class, alphabetical by Contact name.
+2. lower-cased Contact name;
+3. stable Contact identifier as tie-breaker.
 
-Architecture may implement an equivalent deterministic behavior if PostgreSQL query semantics make another small rule simpler, provided UX can explain/predict the result ordering.
+A small hard result cap (for example 20 or 50) is sufficient. Pagination is not required for Slice 2.
 
 ### Empty results
 
@@ -356,13 +422,20 @@ No automatic creation of a new Contact from a no-result state is required.
 
 ## ARCHITECTURE CONTRACT REQUIRED
 
-Architecture decides:
+Architecture contract:
 
-- SQL/search implementation;
-- indexes;
-- whether `ILIKE`, `pg_trgm`, full-text or another PostgreSQL-native mechanism is appropriate;
-- search DTO/read model;
-- pagination/limit if needed.
+- PostgreSQL only;
+- campaign-scoped `ILIKE '%q%'` matching on Character/Contact name and Contact role;
+- ordinary campaign/reference indexes only for Slice 2;
+- no `pg_trgm` or full-text index until measured need justifies it;
+- narrow GM search-result read model:
+  - Contact id;
+  - name;
+  - role;
+  - Location name;
+- narrow GM compact-summary read model;
+- small hard result cap;
+- no pagination requirement for Slice 2.
 
 No Elasticsearch/OpenSearch or external search service is permitted for this slice unless Architecture identifies a concrete blocker and raises it for cross-domain review.
 
@@ -393,7 +466,7 @@ The Contact functions as the fictional source/context for the disclosure.
 
 ```text
 Contact summary
--> choose prepared information
+-> direct Reveal…
 -> preview recipient + exact claim
 -> GM Reveal
 -> CharacterKnowledge updated
@@ -473,7 +546,7 @@ The following are durable accepted campaign state:
 - role;
 - Location association;
 - GM note;
-- prepared Knowledge association.
+- prepared information.
 
 ### Editable by GM
 
@@ -496,11 +569,17 @@ After a successful edit:
 
 Product does not require instantaneous push-refresh of an already-open summary on another client.
 
-### Knowledge disclosure
+### Prepared information replacement
 
-Changing the Contact's prepared information association does **not** retract knowledge already revealed to a Player Character.
+When the GM changes the prepared information:
 
-A Player cannot "unsee" a previous disclosure.
+- do not mutate the old KnowledgeFragment in place if it may already have been revealed;
+- create a new KnowledgeFragment and repoint the Contact's prepared-information association;
+- any existing CharacterKnowledge continues to reference the previously revealed fragment.
+
+A Player cannot "unsee" or silently have historical knowledge rewritten.
+
+Cleanup of obsolete unreferenced fragments is safe to defer.
 
 The slice does not require generic undo or knowledge retraction.
 
@@ -546,19 +625,16 @@ The Player does not need to search for the Contact.
 
 The Player does not need to see the GM note, Contact role metadata, Location association or source relationship unless UX/Game Design explicitly justify a player-visible source label during review.
 
-## CROSS-DOMAIN DECISION
+## CONSOLIDATED DECISION — source provenance deferred
 
-Whether the Player should see **"Source: Nira Voss"** together with the claim is **not decided by Product**.
+UX and Game Design agree that persisted/player-visible source provenance is unnecessary for Slice 2.
 
-- GAME DESIGN must say whether source provenance is mechanically/narratively required in this slice.
-- UX must say whether it improves or confuses the Player mental model.
-- ARCHITECTURE must assess whether it requires new knowledge provenance persistence or can remain contextual/presentational.
-- SECURITY must ensure that source information itself is authorized to disclose.
+Therefore:
 
-Default if deferred:
-
-- reveal only the claim, exactly as Slice 1;
-- the Contact remains the GM-side fictional context.
+- reveal **only the claim** to the Player;
+- do not persist or project `Source: Nira Voss`;
+- the Contact remains the GM-side fictional source/context;
+- revisit provenance in a later knowledge/investigation slice where remembering the source materially changes play.
 
 ---
 
@@ -571,7 +647,7 @@ The final reviewed Slice 2 must satisfy all of the following.
 1. An authenticated GM can create a Contact in an authorized campaign.
 2. Contact creation requires only the accepted minimum fields.
 3. The GM can associate the Contact with an existing same-campaign Location.
-4. The GM can associate one same-campaign KnowledgeFragment as prepared information for the Contact.
+4. The GM can author the Contact's one prepared information item inline in the Contact preparation flow, including claim text and explicit Truth status (`TRUE` / `FALSE` / `UNKNOWN`), without pre-creating a KnowledgeFragment elsewhere.
 5. Save has an observable pending/completed/failed lifecycle.
 6. Accidental repeated Save while pending does not create duplicate unintended state.
 7. A successful reload preserves the Contact and its associations.
@@ -587,11 +663,11 @@ The final reviewed Slice 2 must satisfy all of the following.
 14. Name matches are ordered before role-only matches, with deterministic name ordering within the same class, or a reviewed equivalent deterministic ordering.
 15. Duplicate Contact names are allowed and disambiguated through context rather than rejected as invalid.
 16. Selecting a result opens a compact summary without forcing navigation through a deep administration hierarchy.
-17. The compact summary shows name, role, Location and prepared GM information in user/domain language.
+17. The compact summary shows name, role, Location and the single prepared information item in user/domain language; GM note is secondary.
 
 ## Use in play
 
-18. From the compact summary, the GM can initiate Reveal of the prepared information.
+18. From the compact summary, the GM can use a direct Reveal action for the single prepared information item; no information selector is required.
 19. Before commit, the GM sees the exact recipient Character and exact player-visible claim.
 20. The Player cannot commit the Reveal.
 21. Before Reveal, the hidden claim is absent from the Player Character projection.
@@ -637,7 +713,58 @@ GM prepares Nira Voss
 
 ---
 
-# 11. Explicit exclusions
+# 15. Test expectations
+
+## PostgreSQL integration tests
+
+Minimum required coverage:
+
+1. GM creates Contact + inline KnowledgeFragment atomically.
+2. Failed creation leaves neither partial Contact nor partial prepared knowledge.
+3. Cross-campaign Location is rejected.
+4. Cross-campaign Contact/Knowledge/recipient references are rejected.
+5. Player cannot create/update/search/read GM Contact summary/reveal.
+6. Edit persists after reload.
+7. Replacing prepared information does not alter/retract already revealed CharacterKnowledge.
+8. Search is strictly campaign-scoped.
+9. Partial case-insensitive name matching.
+10. Partial case-insensitive role matching.
+11. Name-match precedence + deterministic ordering, including duplicate names.
+12. Search results do not expose GM note or hidden claim.
+13. Before Reveal, claim is absent from Player projection.
+14. Reveal creates/maintains `CharacterKnowledge = AWARE` atomically.
+15. Repeated Reveal is idempotent and does not duplicate disclosure history.
+16. After Reveal, exact claim appears in the authorized Player projection.
+17. `gm_veracity` and GM note never appear in Player JSON.
+18. Reveal does not create or require an ActionResolution row.
+
+## E2E
+
+One full Playwright acceptance path is sufficient:
+
+```text
+pre-existing Location + GM/Player/assigned Character
+-> GM creates Nira with information + Truth status inline
+-> Save feedback
+-> edit role/note
+-> reload
+-> search "Nira" or "dock"
+-> select result
+-> compact summary
+-> preview recipient + exact claim
+-> Reveal
+-> Player refresh/re-fetch
+-> exact claim visible
+-> reload preserves state
+```
+
+Location may be fixture/precondition.
+
+Duplicate-name ordering/disambiguation and cross-campaign isolation may remain integration tests.
+
+---
+
+# 16. Explicit exclusions
 
 Slice 2 must not pull in the following unless a reviewer demonstrates that one is unavoidable for the accepted scenario.
 
@@ -702,7 +829,123 @@ Slice 2 must not pull in the following unless a reviewer demonstrates that one i
 
 ---
 
-# 12. Cross-domain review matrix
+# 17. Cross-domain review matrix
+
+# 12. Final architecture / data / API contract
+
+## Contact identity
+
+Architecture review establishes the following minimum implementation direction:
+
+- a Contact is person-like and reuses the existing `Character` identity;
+- Contact-specific state lives in a narrow typed relational profile/table;
+- do not create a second independent NPC identity model;
+- do not add nullable Contact-only columns to every Character;
+- do not introduce generic JSONB NPC documents.
+
+Conceptually:
+
+```text
+Contact
+- campaign_id
+- character_id PK/FK -> Character
+- role
+- location_id FK -> Location
+- gm_note nullable
+- prepared_fragment_id FK -> KnowledgeFragment
+```
+
+`Character.name` remains the name source.
+
+Campaign-scoped composite references/constraints should be used where applicable.
+
+## Minimum GM API/commands
+
+No generic CRUD framework is required.
+
+Minimum bounded commands/endpoints are conceptually:
+
+```text
+CreateContact
+UpdateContact
+SearchContacts
+GetContactSummary
+RevealPreparedInformation
+```
+
+Equivalent HTTP surfaces may be:
+
+```text
+POST /campaigns/{campaign_id}/contacts
+PATCH or PUT /campaigns/{campaign_id}/contacts/{contact_id}
+GET /campaigns/{campaign_id}/contacts/{contact_id}
+GET /campaigns/{campaign_id}/contacts/search?q=...
+POST /campaigns/{campaign_id}/contacts/{contact_id}/reveal
+```
+
+Exact route naming remains implementation detail.
+
+## Create transaction
+
+Acceptance-path input contains domain data:
+
+- name;
+- role;
+- location id;
+- optional GM note;
+- prepared claim text;
+- Truth status / `gm_veracity`.
+
+One transaction creates identity, Contact state, KnowledgeFragment and association.
+
+Failure leaves no partial Contact or orphaned acceptance-path knowledge.
+
+## Update transaction
+
+- validates same-campaign references;
+- updates name/role/Location/note atomically;
+- replacing prepared information creates a new KnowledgeFragment and repoints the Contact;
+- simple PostgreSQL last-write-wins concurrency is sufficient for this slice;
+- no ETag/version/distributed-locking framework is required.
+
+## Reveal transaction
+
+Reveal does **not** use `ActionResolution`.
+
+Transaction:
+
+1. authorize GM;
+2. load and validate Contact;
+3. load Contact's bound prepared fragment server-side;
+4. resolve/validate recipient assigned Player Character;
+5. create/update `CharacterKnowledge = AWARE`;
+6. append one meaningful disclosure DomainEvent/history record;
+7. commit once.
+
+Repeated Reveal to an already-aware recipient is idempotent and must not duplicate CharacterKnowledge or disclosure history.
+
+Contact create/edit DomainEvents are not required for Slice 2 unless implementation demonstrates a concrete Product need.
+
+No outbox is required.
+
+---
+
+# 13. Authorization / security contract
+
+- every Contact command/query derives GM campaign membership server-side;
+- `campaign_id` alone is not authorization;
+- Contact, Character, Location, KnowledgeFragment and reveal recipient must be same-campaign validated;
+- Player cannot create/update/search/read canonical Contact summaries or Reveal;
+- search never searches Principals/accounts;
+- search never returns cross-campaign Contacts;
+- GM note, hidden prepared claim and `gm_veracity` are never included in Player JSON before Reveal;
+- after Reveal, Player receives the authorized claim only;
+- no canonical Contact DTO may be sent to Player and hidden in React;
+- no source provenance is persisted/projected in Slice 2.
+
+---
+
+# 14. Acceptance criteria and test expectations
 
 ## 12.1 Contact concept and minimum fields
 
@@ -830,100 +1073,91 @@ Source identity itself may be hidden information and requires explicit projectio
 
 ---
 
-# 13. Exact questions for specialist review
+# 18. Specialist review outcome
 
-## UX review questions
+## UX
 
-1. What is the smallest durable create/edit Contact workflow that replaces, rather than extends, the Slice 1 bootstrap cards?
-2. Where should the bounded campaign search entry point live without freezing the entire future navigation architecture?
-3. What interaction pattern should provide:
-   - query input;
-   - keyboard-friendly result selection;
-   - compact summary;
-   - return to live context?
-4. How should duplicate Contact names be disambiguated using role/Location/context?
-5. Is the proposed interaction target `open search -> type -> select -> summary` sufficiently precise and usable?
-6. What should success/error/pending feedback look like for create/edit in this workflow?
-7. How should the prepared hidden information appear in the GM compact summary without exposing persistence terminology?
-8. What is the minimum disclosure preview before Reveal?
-9. Should the Player-visible claim include a source label such as "Source: Nira Voss", or should source remain purely fictional/GM-side in Slice 2?
-10. Does any part of this scenario force a broader information-architecture decision that cannot safely be deferred?
+**Final consolidated position:** blocker resolved.
 
-## Game Design review questions
+Accepted UX contract:
 
-1. Can a Contact in this slice remain a purely fictional campaign entity with no disposition/reputation/social-stat mechanics?
-2. Is it valid for the proposed scenario to require no roll because the GM establishes that the Contact provides the information?
-3. Does the existing when-to-roll rule remain sufficient for any optional uncertain variant?
-4. Does associating one KnowledgeFragment with a Contact as "prepared information the Contact can reveal" introduce any semantic contradiction with the accepted Knowledge model?
-5. Is source provenance mechanically/narratively required for Slice 2, or can it remain deferred?
-6. If source provenance is required, what is the absolute minimum semantic contract?
-7. Are any additional Contact fields mechanically necessary for this exact scenario?
-8. Does the exact "Reveal prepared information" action provide sufficient actual-play value to count as use in play?
+- prepared information is authored inline with Contact preparation;
+- one prepared information item => direct Reveal, no selector;
+- 0/1/many result behavior as specified;
+- duplicate names disambiguated with role + Location;
+- campaign-level search entry point available from live flow;
+- compact summary prioritizes name/role/Location/information;
+- GM note is secondary;
+- pre-existing Location is a scenario precondition;
+- source provenance is deferred.
 
-## Architecture review questions
+## Game Design
 
-1. Should Contact be represented by extending/reusing the existing Character identity/typed model, or by introducing a narrow Contact/NPC typed concept?
-2. What is the narrowest persistent representation for:
-   - role;
-   - Location association;
-   - optional GM note;
-   - Contact-to-KnowledgeFragment prepared-information association?
-3. What create/update API and transaction boundaries are appropriate?
-4. What PostgreSQL-native search approach best satisfies:
-   - campaign-only;
-   - name + role;
-   - case-insensitive partial match;
-   - deterministic ordering?
-5. Is a dedicated GM Contact search read model/API preferable to a generic campaign-search abstraction for this slice?
-6. What index is actually justified at expected scale?
-7. How should cross-campaign Location/Knowledge associations be rejected?
-8. Can existing Knowledge disclosure application logic be reused directly without dragging in the Slice-1-specific ActionResolution persistence?
-9. If source provenance is selected, what is the narrowest safe representation without broadening CharacterKnowledge unnecessarily?
-10. What DomainEvents/history entries, if any, should Contact create/edit/reveal produce?
-11. Are any new ADRs necessary, or can the implementation remain within existing Accepted architecture?
-12. What integration/E2E tests are required to prove search isolation, edit persistence and safe disclosure?
+**Final position:** APPROVE.
+
+Minimum contract:
+
+- Contact is a fictional campaign entity/source/context, not a mechanically complete NPC;
+- required gameplay fields are name, role, scenario Location and one prepared information item;
+- optional GM note is not gameplay-required;
+- no relationship/disposition/reputation/stats are required;
+- no roll is required when the GM establishes that the Contact provides the information;
+- accepted when-to-roll semantics remain sufficient for optional uncertain situations;
+- direct Reveal is sufficient actual play;
+- no source provenance is required.
+
+## Architecture
+
+**Final consolidated position:** blockers resolved by this specification.
+
+Accepted minimum contract:
+
+- reuse Character identity + narrow Contact typed table/profile;
+- inline information authoring creates Contact + KnowledgeFragment atomically;
+- explicit Truth status supplies required `gm_veracity`;
+- replacing prepared information creates a new KnowledgeFragment;
+- PostgreSQL `ILIKE` search only; no full-text/trigram yet;
+- bounded Contact GM API/read models;
+- Reveal bypasses ActionResolution and directly reuses Knowledge disclosure semantics;
+- Reveal is synchronous, atomic and idempotent;
+- no new ADR required if implementation remains within this contract;
+- no new horizontal infrastructure.
 
 ---
 
-# 14. Potential Human arbitration
+# 19. Human arbitration
 
-At Product specification time, no Human arbitration is required beyond the already completed selection of Option C.
+**No substantive Human arbitration remains.**
 
-However, Human arbitration may become necessary after specialist review if any of the following remain materially contested:
+The only previously identified material questions have converged:
 
-1. **Player-visible source provenance**
-   - claim only;
-   - claim + "Source: Nira Voss".
+- **source provenance:** UX + Game Design + Architecture agree to defer it;
+- **Contact identity:** Architecture selected Character identity + narrow Contact typed state without conflicting Product/Game Design semantics;
+- **search scope:** Contacts-only campaign search remains accepted for this slice;
+- **use in play:** Game Design confirms direct Reveal is sufficient actual play;
+- **inline information authoring:** UX, Game Design and Architecture agree;
+- **veracity:** explicit bounded GM Truth status resolves the accepted Knowledge persistence requirement without a silent default.
 
-2. **Contact domain identity**
-   - only if Game Design/Product meaning and Architecture implementation create a cross-domain disagreement over whether Contact is a Character subtype/role or a separate typed domain concept.
-
-3. **Search scope**
-   - only if UX/Product find Contacts-only search too narrow for the selected user value while Architecture warns that multi-entity search materially expands the slice.
-
-4. **Use-in-play sufficiency**
-   - only if Game Design concludes that a direct reveal is not enough to count as meaningful actual play and proposes a bounded resolution interaction instead.
-
-These should not be escalated unless specialist reviews produce a real disagreement.
+No Human choice is needed unless the Human Project Owner wishes to reopen one of these converged decisions.
 
 ---
 
-# 15. Review and acceptance gate
+# 20. Acceptance gate
 
-This document remains:
+All cross-domain review blockers identified on PR #11 are resolved in this consolidated specification.
 
-**PROPOSED — CROSS-DOMAIN REVIEW REQUIRED**
+**Remaining blockers:** NONE.
 
-The next steps are:
+This specification is therefore:
 
-1. Game Design reviews only the questions above.
-2. UX reviews only the questions above.
-3. Architecture reviews only the questions above.
-4. Product consolidates the three reviews.
-5. Any genuine cross-domain disagreements are presented to the Human Project Owner.
-6. Only after the exact contract is accepted:
-   - record the Slice 2 decision;
-   - update `docs/planning/current-slice.md`;
-   - authorize implementation.
+**READY FOR PRODUCT/HUMAN ACCEPTANCE — IMPLEMENTATION NOT YET AUTHORIZED**
 
-No implementation should begin from this proposal alone.
+The slice is still not marked `ACCEPTED` in this PR and `docs/planning/current-slice.md` is unchanged.
+
+Next step:
+
+1. Human Project Owner confirms acceptance of this final consolidated contract, or explicitly reopens a material point.
+2. Product records the accepted Slice 2 decision and updates `docs/planning/current-slice.md`.
+3. Only after that merge is implementation authorized.
+
+No implementation should begin before those acceptance records are in `main`.
