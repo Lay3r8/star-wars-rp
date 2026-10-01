@@ -135,3 +135,62 @@ class HistoryItemOut(BaseModel):
     subject_id: uuid.UUID
     occurred_at: datetime
     message: str
+
+
+class PreparedInformationIn(BaseModel):
+    claim_text: str = Field(min_length=1, max_length=4000)
+    gm_veracity: Literal["TRUE", "FALSE", "UNKNOWN"]
+
+
+class ContactCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    role: str = Field(min_length=1, max_length=240)
+    location_id: uuid.UUID
+    gm_note: str | None = Field(default=None, max_length=4000)
+    prepared_information: PreparedInformationIn
+
+
+class ContactUpdate(ContactCreate):
+    pass
+
+
+class ContactSearchResult(BaseModel):
+    contact_id: uuid.UUID
+    name: str
+    role: str
+    location_name: str
+
+
+class PreparedInformationOut(BaseModel):
+    claim_text: str
+    gm_veracity: Literal["TRUE", "FALSE", "UNKNOWN"]
+
+
+class ContactRevealPreview(BaseModel):
+    recipient_character_id: uuid.UUID
+    recipient_name: str
+    claim_text: str
+
+
+class ContactSummary(BaseModel):
+    contact_id: uuid.UUID
+    name: str
+    role: str
+    location_id: uuid.UUID
+    location_name: str
+    gm_note: str | None
+    prepared_information: PreparedInformationOut
+    reveal_preview: ContactRevealPreview | None
+
+
+class RevealContactInformationRequest(BaseModel):
+    recipient_character_id: uuid.UUID
+
+
+class RevealContactInformationResult(BaseModel):
+    contact_id: uuid.UUID
+    recipient_character_id: uuid.UUID
+    recipient_name: str
+    claim_text: str
+    state: Literal["AWARE"]
+    already_revealed: bool
