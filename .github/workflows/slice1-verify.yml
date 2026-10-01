@@ -1,0 +1,135 @@
+name: Slice 1 verification
+
+on:
+  push:
+    branches:
+      - ai/architecture/slice-1
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: star-wars-rp-slice1-ci
+      AUTH_SECRET: slice1-ci-secret-not-for-external-use
+      AUTH_COOKIE_SECURE: "false"
+      POSTGRES_PORT: "55432"
+      API_PORT: "58000"
+      WEB_PORT: "55173"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API and web images
+        run: docker compose -f infra/compose.yaml build api web
+
+      - name: Start PostgreSQL
+        run: docker compose -f infra/compose.yaml up -d db
+
+      - name: Run backend tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          docker compose -f infra/compose.yaml run --rm \
+            -e TEST_DATABASE_URL=postgresql+psycopg://starwars:starwars@db:5432/star_wars_rp_test \
+            api pytest -q 2>&1 | tee /tmp/pytest.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            message="$(tail -n 1 /tmp/pytest.log | tr '\n' ' ' | cut -c1-130)"
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state=error \
+              -f context=slice1/backend-tests \
+              -f description="$message"
+            exit "$code"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=slice1/backend-tests \
+            -f description="Backend tests passed"
+
+      - name: Build frontend
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          docker compose -f infra/compose.yaml run --rm web npm run build 2>&1 | tee /tmp/frontend-build.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            message="$(grep -m1 -E 'error TS[0-9]+:|Error:|ERROR|failed|Failed' /tmp/frontend-build.log || true)"
+            if [ -z "$message" ]; then
+              message="$(sed '/^[[:space:]]*$/d' /tmp/frontend-build.log | tail -n 1)"
+            fi
+            message="$(printf '%s' "$message" | cut -c1-130)"
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state=error \
+              -f context=slice1/frontend-build \
+              -f description="$message"
+            exit "$code"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=slice1/frontend-build \
+            -f description="Frontend build passed"
+
+      - name: Start API and web
+        run: docker compose -f infra/compose.yaml up -d api web
+
+      - name: Verify health
+        run: |
+          i=0
+          until curl -fsS "http://127.0.0.1:${API_PORT}/health" >/dev/null; do
+            i=$((i + 1))
+            if [ "$i" -ge 60 ]; then
+              docker compose -f infra/compose.yaml logs api
+              exit 1
+            fi
+            sleep 1
+          done
+
+          i=0
+          until curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null; do
+            i=$((i + 1))
+            if [ "$i" -ge 60 ]; then
+              docker compose -f infra/compose.yaml logs web
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run Playwright Slice 1 flows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          docker compose -f infra/compose.yaml --profile test run --rm e2e npm run test:e2e -- --reporter=line 2>&1 | tee /tmp/e2e.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            failure="$(grep -m1 -E 'slice1\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log || true)"
+            locator="$(grep -m1 -E 'Locator:|Error: expect\(locator\)' /tmp/e2e.log || true)"
+            message="$(printf '%s %s' "$locator" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
+            if [ -z "$message" ]; then
+              message="$(sed '/^[[:space:]]*$/d' /tmp/e2e.log | tail -n 1 | cut -c1-130)"
+            fi
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state=error \
+              -f context=slice1/e2e \
+              -f description="$message"
+            exit "$code"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=slice1/e2e \
+            -f description="Playwright Slice 1 flows passed"
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f infra/compose.yaml --profile test down -v --remove-orphans
