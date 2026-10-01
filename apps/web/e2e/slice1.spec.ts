@@ -49,6 +49,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
 
   await gmPage.reload();
+  await gmPage.getByText("Slice 1 proof setup").click();
   await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
   await expect(gmPage.getByRole("button", { name: "Apply reveal" })).toBeVisible();
 
@@ -59,6 +60,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByRole("button", { name: "Apply reveal" }).click();
   await gmPage.reload();
+  await gmPage.getByText("Slice 1 proof setup").click();
   await expect(gmPage.getByText("Resolution closed.")).toBeVisible();
   await playerPage.reload();
   await expect(playerPage.getByText("The confiscated shipment was transferred to Dock 47.")).toBeVisible();
@@ -97,6 +99,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
 
   await page.reload();
+  await page.getByText("Slice 1 proof setup").click();
   await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Close failed resolution" })).toBeVisible();
   await page.getByRole("button", { name: "Close failed resolution" }).click();
@@ -104,6 +107,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
   await expect(page.getByText("Imperial security logs the intrusion.")).toBeVisible();
   await page.reload();
+  await page.getByText("Slice 1 proof setup").click();
   await expect(page.getByText("Resolution closed.")).toBeVisible();
   await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
 });
