@@ -35,10 +35,11 @@ def login(body: AuthRequest, response: Response, db: Session = Depends(get_db)):
 
 
 @router.post("/logout", status_code=204)
-def logout(response: Response):
+def logout():
     settings = get_settings()
+    response = Response(status_code=204)
     response.delete_cookie(settings.auth_cookie_name, path="/")
-    return Response(status_code=204)
+    return response
 
 
 @router.get("/me", response_model=PrincipalOut)

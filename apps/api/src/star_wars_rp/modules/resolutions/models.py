@@ -16,6 +16,15 @@ class ActionResolution(Base):
         ),
         CheckConstraint("outcome IS NULL OR outcome IN ('SUCCESS', 'FAILURE')", name="ck_action_resolution_outcome"),
         CheckConstraint("dc >= 1", name="ck_action_resolution_dc"),
+        CheckConstraint("mechanic = 'slicing'", name="ck_action_resolution_mechanic"),
+        CheckConstraint(
+            "natural_roll IS NULL OR natural_roll BETWEEN 1 AND 20",
+            name="ck_action_resolution_natural_roll",
+        ),
+        CheckConstraint(
+            "success_recipient_character_id = actor_character_id",
+            name="ck_action_resolution_recipient_is_actor",
+        ),
         ForeignKeyConstraint(
             ["campaign_id", "actor_character_id"],
             ["character.campaign_id", "character.entity_id"],
