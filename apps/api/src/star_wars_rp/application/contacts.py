@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from star_wars_rp.application.campaigns import require_gm
 from star_wars_rp.application.history import append_domain_event
 from star_wars_rp.application.knowledge import make_character_aware
-from star_wars_rp.errors import NotFound
-from star_wars_rp.modules.campaigns.models import PlayerCharacterAssignment
+from star_wars_rp.errors import InvalidOperation, NotFound
+from star_wars_rp.modules.campaigns.models import CampaignMembership, PlayerCharacterAssignment
 from star_wars_rp.modules.characters.models import Character
 from star_wars_rp.modules.contacts.models import Contact
 from star_wars_rp.modules.entities.models import Entity
@@ -70,9 +70,16 @@ def _assigned_recipient(
     recipient_character_id: uuid.UUID,
 ) -> Character:
     assignment = db.scalar(
-        select(PlayerCharacterAssignment).where(
+        select(PlayerCharacterAssignment)
+        .join(
+            CampaignMembership,
+            (CampaignMembership.campaign_id == PlayerCharacterAssignment.campaign_id)
+            & (CampaignMembership.principal_id == PlayerCharacterAssignment.player_principal_id),
+        )
+        .where(
             PlayerCharacterAssignment.campaign_id == campaign_id,
             PlayerCharacterAssignment.character_id == recipient_character_id,
+            CampaignMembership.role == "PLAYER",
         )
     )
     if assignment is None:
@@ -102,6 +109,13 @@ def _single_reveal_preview(db: Session, campaign_id: uuid.UUID, claim_text: str)
     }
 
 
+def _required_text(value: str, field_name: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise InvalidOperation(f"{field_name} must not be blank")
+    return normalized
+
+
 def create_contact(
     db: Session,
     gm_principal_id: uuid.UUID,
@@ -116,15 +130,18 @@ def create_contact(
 ) -> dict:
     require_gm(db, gm_principal_id, campaign_id)
     _require_location(db, campaign_id, location_id)
+    name = _required_text(name, "Name")
+    role = _required_text(role, "Role")
+    claim_text = _required_text(claim_text, "Prepared information")
 
     entity = Entity(campaign_id=campaign_id, entity_type="character")
     db.add(entity)
     db.flush()
 
-    character = Character(entity_id=entity.id, campaign_id=campaign_id, name=name.strip())
+    character = Character(entity_id=entity.id, campaign_id=campaign_id, name=name)
     fragment = KnowledgeFragment(
         campaign_id=campaign_id,
-        claim_text=claim_text.strip(),
+        claim_text=claim_text,
         gm_veracity=gm_veracity,
     )
     db.add_all([character, fragment])
@@ -133,7 +150,7 @@ def create_contact(
     contact = Contact(
         campaign_id=campaign_id,
         character_id=character.entity_id,
-        role=role.strip(),
+        role=role,
         location_id=location_id,
         gm_note=(gm_note.strip() or None) if gm_note else None,
         prepared_fragment_id=fragment.id,
@@ -161,8 +178,10 @@ def update_contact(
     character = _character(db, campaign_id, contact.character_id)
     _require_location(db, campaign_id, location_id)
     current_fragment = _fragment(db, campaign_id, contact.prepared_fragment_id)
+    name = _required_text(name, "Name")
+    role = _required_text(role, "Role")
+    normalized_claim = _required_text(claim_text, "Prepared information")
 
-    normalized_claim = claim_text.strip()
     if normalized_claim != current_fragment.claim_text or gm_veracity != current_fragment.gm_veracity:
         replacement = KnowledgeFragment(
             campaign_id=campaign_id,
@@ -173,8 +192,8 @@ def update_contact(
         db.flush()
         contact.prepared_fragment_id = replacement.id
 
-    character.name = name.strip()
-    contact.role = role.strip()
+    character.name = name
+    contact.role = role
     contact.location_id = location_id
     contact.gm_note = (gm_note.strip() or None) if gm_note else None
 
