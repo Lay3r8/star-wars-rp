@@ -584,9 +584,10 @@ One Playwright scenario covers:
 - GM creates campaign/content and assignment;
 - Player confirms secret absent;
 - GM resolves forced-success check and Applies;
-- Player refreshes and sees claim.
+- GM reloads after Roll and reconstructs the pending resolution;
+- Player reloads after Apply and sees the claim.
 
-A second short path covers forced failure and GM Close.
+A second short path covers forced failure, a full GM reload, and GM Close.
 
 ## 14. Current library baseline
 
@@ -616,7 +617,7 @@ Frontend:
 - @types/node 24.19.0
 - Playwright 1.63.0
 
-Exact compatibility is verified by build/tests on the slice branch; prereleases are excluded.
+These are the selected stable versions. Exact cross-stack compatibility must be confirmed by `scripts/verify-slice1.sh` before the implementation PR is opened; prereleases are excluded.
 
 ## 15. Explicit non-design
 
