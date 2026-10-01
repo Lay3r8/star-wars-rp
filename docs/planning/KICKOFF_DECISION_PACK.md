@@ -1,6 +1,6 @@
 # Star Wars RP — Kickoff Decision Pack
 
-Status: CROSS-DOMAIN REVIEWS CONSOLIDATED — HUMAN ARBITRATION PENDING  
+Status: CROSS-DOMAIN REVIEWS CONSOLIDATED — SLICE 1 BLOCKERS RESOLVED  
 Owner: Product Lead / Project Lead  
 Branch: `ai/product/kickoff`  
 Source of truth reviewed: `main`
@@ -465,7 +465,7 @@ Any disclosure or state mutation resulting from the loop remains backend-authori
 
 ## K-05 — GM authority
 
-**STATUS:** CROSS-DOMAIN CONSENSUS — HUMAN FORMALIZATION REQUIRED  
+**STATUS:** ACCEPTED — HUMAN RATIFIED (Option A, 2026-10-01)  
 **DECISION OWNER:** Product Lead / Game Design / Human Project Owner  
 **AFFECTED DOMAINS:** All  
 **BLOCKING:** YES
@@ -516,7 +516,7 @@ Only authorized server-derived GM principals may adjudicate/commit GM operations
 
 ### RECOMMENDATION
 
-**Product recommends Option 2 and formalizing D-004 as ACCEPTED. This now requires Human Project Owner ratification rather than further specialist design.**
+**ACCEPTED:** Human Project Owner selected Option 2 / Option A of the arbitration pack. D-004 is to be recorded as ACCEPTED.
 
 ---
 
@@ -1564,7 +1564,7 @@ If a tunnel such as ngrok or Cloudflare Tunnel is used, it is transport/exposure
 
 ## K-23 — First playable vertical slice
 
-**STATUS:** CROSS-DOMAIN REVIEW CONSENSUS — HUMAN ACCEPTANCE REQUIRED  
+**STATUS:** ACCEPTED — HUMAN RATIFIED (Option A, 2026-10-01)  
 **DECISION OWNER:** Product Lead / Human Project Owner  
 **AFFECTED DOMAINS:** All  
 **BLOCKING:** YES
@@ -1615,7 +1615,7 @@ The slice directly tests principal-based authorization, cross-campaign reference
 
 ### RECOMMENDATION
 
-**Product recommends Option 2. The consolidated detailed specification is in Phase 3.**
+**ACCEPTED:** Human Project Owner selected the consolidated terminal-slicing slice (Option A of the arbitration pack). The authoritative detailed specification is in Phase 3.
 
 ---
 
@@ -1690,7 +1690,7 @@ Reduces unnecessary attack surface.
 
 ## Slice 1 — "Slice the terminal, reveal the secret"
 
-**Status:** CROSS-DOMAIN REVIEW CONSENSUS — HUMAN ACCEPTANCE PENDING
+**Status:** ACCEPTED — HUMAN RATIFIED (2026-10-01)
 
 ### Product goal
 
@@ -2077,171 +2077,40 @@ Incorporated:
 
 ---
 
-# Human Arbitration Pack
+# Human Arbitration Outcome
 
-Only the following decisions still require Human Project Owner action **before Slice 1 implementation**.
+Human arbitration for Slice 1 blockers was completed on 2026-10-01.
 
-Broader MVP breadth can reasonably be deferred until after Slice 1; if deferred, it remains a Product recommendation rather than an implementation commitment.
+## K-05 — GM final narrative authority
 
-## K-05 — Formalize GM final narrative authority
+**Decision:** ACCEPTED — Option A.
 
-### QUESTION
+The GM retains final authority over interpretive and authoritative narrative/canonical changes. Bounded deterministic effects may be mechanically derived and committed under an accepted policy.
 
-Should D-004 be formalized as:
+This resolves D-004.
 
-> The GM retains final authority over interpretive and authoritative narrative/canonical changes; bounded deterministic effects may be mechanically derived and committed under an accepted policy.
+## K-23 — First playable vertical slice
 
-### WHY NOW
+**Decision:** ACCEPTED — Option A.
 
-The Slice 1 success/failure commit semantics depend on a stable authority boundary. D-004 is currently only "To formalize".
+The accepted first vertical slice is **"Slice the terminal, reveal the secret"**, using the consolidated specification in Phase 3.
 
-### OPTION A — Formalize the consolidated rule
+The Human Project Owner explicitly noted disappointment that combat is not included in Slice 1, while accepting that combat can be addressed in a later slice/MVP stage.
 
-**Description:** adopt the wording above.
+This acceptance does **not** move combat into Slice 1 and does not settle the final combat design.
 
-**Advantages:**
+## Remaining Product decisions
 
-- matches Product, Game Design, UX, and Architecture;
-- preserves deterministic assistance;
-- prevents mechanical outcome from silently becoming narrative truth;
-- gives future automation a clear boundary.
-
-**Inconvénients:**
-
-- later automation must continue respecting the deterministic/interpretive distinction.
-
-### OPTION B — Keep D-004 unresolved
-
-**Description:** do not formalize GM authority yet.
-
-**Advantages:**
-
-- preserves theoretical flexibility.
-
-**Inconvénients:**
-
-- leaves consequence authority ambiguous;
-- keeps a kickoff implementation gate open;
-- invites inconsistent future automation behavior.
-
-### PRODUCT VIEW
-
-Option A.
-
-### GAME DESIGN VIEW
-
-Option A is explicitly approved.
-
-### UX VIEW
-
-Consistent with explicit Apply/Close and prevention of irreversible accidental disclosure.
-
-### ARCHITECTURE VIEW
-
-Consistent with bounded authorized transactional mutations and the distinction between derived effects and GM adjudication.
-
-### BLOCKING SLICE 1
-
-**YES**
-
-### DEFAULT IF DEFERRED
-
-Slice 1 remains blocked at the kickoff gate; no implementation should assume a narrative-authority policy that is not formally accepted.
-
----
-
-## K-23 — Accept the consolidated first vertical slice
-
-### QUESTION
-
-Should Slice 1 be the consolidated non-combat **"Slice the terminal, reveal the secret"** scenario defined above?
-
-### WHY NOW
-
-The implementation gate requires the first vertical slice to be accepted before implementation planning begins.
-
-### OPTION A — Accept the consolidated terminal-slicing slice
-
-**Description:** implement the bounded end-to-end scenario defined in Phase 3.
-
-**Advantages:**
-
-- unanimously supported in direction by all three specialist reviews;
-- tests real GM/player play rather than CRUD only;
-- exercises D20, stakes, success/failure completion, permissions, persistence, knowledge, disclosure, transactions, history, and reload;
-- avoids combat, generation, Session/Scene, realtime, and generic infrastructure.
-
-**Inconvénients:**
-
-- deliberately does not test combat or procedural generation;
-- includes enough authentication/security work to validate two real principals.
-
-### OPTION B — Reduce to CRUD/persistence only
-
-**Description:** remove the D20/consequence/disclosure loop from Slice 1.
-
-**Advantages:**
-
-- smaller implementation.
-
-**Inconvénients:**
-
-- does not validate the fundamental gameplay-assistance loop;
-- does not exercise the most important projection/disclosure boundary;
-- all three specialist reviews preferred the gameplay slice.
-
-### OPTION C — Expand Slice 1 with combat or generation
-
-**Description:** add another major subsystem now.
-
-**Advantages:**
-
-- tests more headline features immediately.
-
-**Inconvénients:**
-
-- imports unresolved Game Design/UX/Architecture questions;
-- materially increases scope and slows first end-to-end validation;
-- no specialist review recommends it.
-
-### PRODUCT VIEW
-
-Option A.
-
-### GAME DESIGN VIEW
-
-Approves the terminal-slicing scenario after the incorporated rules for when-to-roll, failure/retry, `Aware`, and pre-bound success effect.
-
-### UX VIEW
-
-Approves the scenario after explicit failure Close, compact prefilling, and exact pre-roll/Apply disclosure preview.
-
-### ARCHITECTURE VIEW
-
-Approves the scenario after principal-based authorization, persisted effect binding, atomic/idempotent Apply, terminal failure closure, and history/testability clarifications.
-
-### BLOCKING SLICE 1
-
-**YES**
-
-### DEFAULT IF DEFERRED
-
-No first slice is accepted, so implementation remains blocked by `docs/planning/PROJECT_KICKOFF.md`.
-
----
-
-## Product decisions not requiring immediate Human arbitration
-
-The following remain important but **do not block Slice 1** and can be decided after the first slice if desired:
+The following remain important but do **not** block Slice 1 and are intentionally deferred:
 
 - exact broader MVP boundary in K-03;
 - procedural generation as MVP vs post-MVP in K-16;
 - personal-scale combat later-MVP vs post-MVP in K-17;
-- final post-MVP status of tactical maps in K-18;
-- vehicle/space combat timing in K-19;
+- final tactical-map timing in K-18;
+- vehicle/space-combat timing in K-19;
 - final explicit MVP exclusions in K-24.
 
-**Default if deferred:** none of these capabilities become an implementation commitment merely because they are recommended in this pack. The Accepted baseline plus the accepted Slice 1 remain the only immediate commitments.
+**Default while deferred:** these remain recommendations/proposals, not implementation commitments.
 
 ---
 
@@ -2282,14 +2151,12 @@ The following do not need resolution to implement Slice 1 and should not block t
 
 # Kickoff exit criteria
 
-The specialist-review portion of the kickoff is complete.
+The specialist-review and human-arbitration portions of the kickoff are complete.
 
-The kickoff is ready to transition to implementation planning when:
+K-05 and K-23 are accepted.
 
-1. the Human Project Owner formalizes K-05 GM authority;
-2. the Human Project Owner accepts K-23 Slice 1;
-3. the resulting accepted decisions are transferred from this review artifact into the appropriate authoritative domain/planning documents;
-4. `docs/planning/current-slice.md` is updated to the accepted Slice 1;
-5. remaining non-blocking MVP recommendations are either explicitly accepted or retained as deferred/proposed without delaying Slice 1.
+Before implementation starts, the repository must reflect those accepted decisions in the decision log and current-slice document. The same PR performs that synchronization.
 
-Until then, this document remains a review artifact and does not authorize implementation.
+Non-blocking MVP recommendations may remain deferred/proposed without delaying Slice 1.
+
+Once this PR is approved for merge and the accepted kickoff documentation is on `main`, the kickoff implementation gate is satisfied for Slice 1.
