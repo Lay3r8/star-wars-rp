@@ -57,7 +57,24 @@ jobs:
             -f description="Backend tests passed"
 
       - name: Build frontend
-        run: docker compose -f infra/compose.yaml run --rm web npm run build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          docker compose -f infra/compose.yaml run --rm web npm run build 2>&1 | tee /tmp/frontend-build.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            message="$(tail -n 1 /tmp/frontend-build.log | tr '\n' ' ' | cut -c1-130)"
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state=error \
+              -f context=slice1/frontend-build \
+              -f description="$message"
+            exit "$code"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=slice1/frontend-build \
+            -f description="Frontend build passed"
 
       - name: Start API and web
         run: docker compose -f infra/compose.yaml up -d api web
