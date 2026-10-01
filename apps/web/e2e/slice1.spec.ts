@@ -57,6 +57,8 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   await expect(playerPage.getByText("No disclosed knowledge yet.")).toBeVisible();
 
   await gmPage.getByRole("button", { name: "Apply reveal" }).click();
+  await gmPage.reload();
+  await expect(gmPage.getByText("Resolution closed.")).toBeVisible();
   await playerPage.reload();
   await expect(playerPage.getByText("The confiscated shipment was transferred to Dock 47.")).toBeVisible();
 
@@ -97,5 +99,9 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await expect(page.getByRole("button", { name: "Close failed resolution" })).toBeVisible();
   await page.getByRole("button", { name: "Close failed resolution" }).click();
   await expect(page.getByText("Resolution closed.")).toBeVisible();
+  await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
   await expect(page.getByText("Imperial security logs the intrusion.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Resolution closed.")).toBeVisible();
+  await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
 });

@@ -354,6 +354,12 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
           )}
 
           {resolution.state.startsWith("CLOSED_") && <p className="success">Resolution closed.</p>}
+          {resolution.state === "CLOSED_FAILURE" && (
+            <p className="muted">
+              Do not repeat the same roll under unchanged fiction. A new attempt requires a changed
+              approach or circumstance, assistance/equipment, additional time, or a new/increased cost or risk.
+            </p>
+          )}
         </section>
       )}
 

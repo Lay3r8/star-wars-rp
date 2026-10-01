@@ -90,6 +90,16 @@ def test_success_reveal_is_authorized_atomic_and_idempotent():
         assert before.json()["knowledge"] == []
         assert "gm_veracity" not in before.text
         assert data["fragment"]["claim_text"] not in before.text
+        assert player.get(
+            f"/api/campaigns/{campaign_id}/resolutions/latest"
+        ).status_code == 403
+        assert player.put(
+            f"/api/campaigns/{campaign_id}/player-assignment",
+            json={
+                "player_principal_id": data["player"]["id"],
+                "character_id": data["character"]["id"],
+            },
+        ).status_code == 403
 
         for command, body in [
             ("roll", None),
