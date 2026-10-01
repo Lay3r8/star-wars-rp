@@ -1,69 +1,107 @@
 # Current Vertical Slice
 
-## Slice 1 — Slice the terminal, reveal the secret
+## Slice 2 — Prep a Contact, Find Them Instantly, Use Them in Play
 
 **Status:** ACCEPTED  
 **Accepted:** 2026-10-01  
 **Owner:** Product Lead / Human Project Owner  
-**Specification:** `docs/planning/KICKOFF_DECISION_PACK.md`, Phase 3
+**Specification:** `docs/planning/slice-2-spec.md`
 
 ## Goal
 
-Validate one real end-to-end GM/player gameplay loop:
+Validate that the application can support a durable GM preparation-to-live-play workflow:
 
 ```text
-persistent campaign context
--> fictional player intent
--> when-to-roll decision
--> Intent + concrete Risk + pre-bound success effect
--> minimal Custom D20 check
--> success OR failure
--> explicit terminal GM action
--> atomic/correlated persistence
--> safe player disclosure when applicable
--> meaningful history
--> reload with state intact
+prepare Contact
+-> edit if needed
+-> find quickly during live play
+-> open compact summary
+-> reveal one prepared piece of information
+-> persist safe Player disclosure
 ```
 
-## Required Slice 1 contracts
+## Accepted scenario
 
-- two distinct authenticated principals: GM and Player;
-- backend-derived authorization, membership, role, assignment, and campaign checks;
-- one Player Character with a precomputed D20 modifier;
-- one Location/current context;
-- one hidden `KnowledgeFragment`;
-- absence of `CharacterKnowledge` means Unknown;
-- the only explicit Slice 1 epistemic state is `Aware`;
-- minimum stakes are Intent + concrete Risk;
-- roll only when the outcome is uncertain, meaningful risk exists, and success/failure are both fictionally possible;
-- minimum roll contract: `1d20 + resolved precomputed modifier >= DC`;
-- DC and exact success reveal recipient/fragment are fixed before Roll;
-- success uses preview -> GM Apply;
-- Apply is authorized, atomic, one-shot/idempotent, and creates/updates `CharacterKnowledge = Aware`;
-- failure uses concrete adjudication -> GM Close;
-- unchanged retry-until-success is not allowed;
-- `DomainEvent` is append-only history/audit output, not internal RPC;
-- PostgreSQL is authoritative mutable state;
-- explicit player projections protect hidden/GM-only information.
+The GM prepares Nira Voss before the session with:
 
-## Explicit Slice 1 exclusions
+- name;
+- short role;
+- existing Location;
+- optional GM note;
+- one prepared information item;
+- explicit Truth status: `TRUE`, `FALSE`, or `UNKNOWN`.
 
-- combat and initiative;
-- tactical maps;
+During live play the GM searches the current campaign for Nira, opens a compact summary, previews the exact recipient Character and exact claim, and explicitly Reveals that claim.
+
+No social roll is required in the acceptance path because the GM has established that Nira provides the information.
+
+## Required Slice 2 contracts
+
+- GM and Player remain distinct authenticated principals.
+- Contact reuses Character identity plus a narrow typed Contact profile/state.
+- Contact preparation authors the one information item inline.
+- Contact creation atomically persists Contact state + KnowledgeFragment association.
+- Replacing prepared information creates a new KnowledgeFragment and does not rewrite previously revealed CharacterKnowledge.
+- Search is GM-only, current-campaign only, Contacts-only.
+- Search fields: Contact name + role.
+- Matching: case-insensitive partial text.
+- Ordering: name matches before role-only matches, then deterministic name/id ordering.
+- 0/1/many result behavior and minimum keyboard interaction follow the accepted UX contract.
+- Compact summary shows name, role, Location, prepared information, and direct Reveal; GM note is secondary.
+- Reveal bypasses Slice-1-specific ActionResolution persistence.
+- Reveal is backend-authorized, synchronous, atomic and idempotent.
+- After Reveal, `CharacterKnowledge = AWARE` and the Player projection contains the exact claim.
+- GM note and `gm_veracity` remain hidden from Player.
+- Player-visible source provenance is deferred.
+- PostgreSQL remains the only required search/persistence technology.
+
+## Acceptance criteria
+
+The normative acceptance criteria and test expectations are defined in `docs/planning/slice-2-spec.md`.
+
+At minimum, implementation must demonstrate end-to-end:
+
+```text
+pre-existing Location + GM + Player + assigned Character
+-> GM creates Contact with inline information + Truth status
+-> Save feedback
+-> edit
+-> reload
+-> search
+-> compact summary
+-> preview recipient + exact claim
+-> Reveal
+-> Player receives exact claim
+-> reload preserves Contact and disclosure state
+```
+
+## Explicit Slice 2 exclusions
+
+- complete campaign CMS;
+- generic entity editor;
+- full NPC system;
+- relationship/disposition/reputation systems;
+- social combat;
+- combat/encounters;
+- Scene/Session;
 - procedural generation;
-- AI assistance;
-- global search;
-- persistent Session/Scene;
-- realtime/WebSockets;
-- progression;
-- Force/Dark Side mechanics;
-- vehicles/space combat;
-- advanced epistemic states/provenance/infohazards;
-- generic consequence framework;
-- generic Rule Effect DSL;
-- generic undo;
+- Player Contact search/directory;
+- Principal/account search;
+- multi-entity global search;
+- realtime/WebSockets/SSE;
+- Elasticsearch/OpenSearch;
+- pg_trgm/full-text search for this slice;
+- generic ActionResolution engine;
+- Rule Effect DSL;
 - outbox worker/broker;
+- microservices;
 - plugin runtime;
-- Kubernetes/distributed infrastructure.
+- generic undo/archive/delete;
+- Player-visible source provenance;
+- i18n implementation.
 
-Combat is intentionally deferred from Slice 1 and may be introduced in a later vertical slice/MVP stage.
+## Deferred questions
+
+Deferred items remain non-normative and must not be inferred as accepted requirements from this slice.
+
+See `docs/planning/open-questions.md`.
