@@ -1,6 +1,6 @@
 # Product Directions from Slice 2 Manual Testing
 
-**Status:** PROPOSED — FUTURE PRODUCT DIRECTION  
+**Status:** HUMAN-VALIDATED PRODUCT DIRECTION — CROSS-DOMAIN CONTRACTS DEFERRED  
 **Owner:** Product Lead  
 **Source:** Human Project Owner manual testing during Slice 2 implementation  
 **Current-slice impact:** NONE
@@ -8,6 +8,10 @@
 ## Purpose
 
 Capture durable future Product directions observed while testing the Slice 2 implementation.
+
+The Human Project Owner validated these Product directions on 2026-10-01.
+
+This validation means the directions should be preserved for future slice selection. It does **not** pre-accept the Game Design, UX, Architecture or Security contracts needed to implement them.
 
 These points are **not**:
 
