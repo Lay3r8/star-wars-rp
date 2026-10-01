@@ -115,7 +115,7 @@ jobs:
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
             failure="$(grep -m1 -E 'slice1\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log || true)"
-            locator="$(grep -m1 -E 'Locator:|Error: expect\(locator\)' /tmp/e2e.log || true)"
+            locator="$(grep -m1 -E 'Locator:' /tmp/e2e.log || true)"
             message="$(printf '%s %s' "$locator" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
             if [ -z "$message" ]; then
               message="$(sed '/^[[:space:]]*$/d' /tmp/e2e.log | tail -n 1 | cut -c1-130)"
