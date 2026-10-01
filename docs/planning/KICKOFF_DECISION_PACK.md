@@ -1,6 +1,6 @@
 # Star Wars RP — Kickoff Decision Pack
 
-Status: PROPOSED FOR CROSS-DOMAIN REVIEW  
+Status: CROSS-DOMAIN REVIEWS CONSOLIDATED — HUMAN ARBITRATION PENDING  
 Owner: Product Lead / Project Lead  
 Branch: `ai/product/kickoff`  
 Source of truth reviewed: `main`
@@ -27,6 +27,7 @@ The intended workflow is:
 - **TO FORMALIZE** — direction already recorded in `main` but not yet formally Accepted.
 - **DEFER CANDIDATE** — Product recommends explicitly postponing the decision or capability.
 - **OPEN** — no recommendation can safely replace specialist review.
+- **REVIEW CONSENSUS** — Product, Game Design, UX, and Architecture positions are compatible after review; human ratification may still be required for normative status.
 
 ---
 
@@ -183,6 +184,35 @@ The following must be resolved or explicitly constrained before Slice 1 implemen
 - full Rule Effect DSL;
 - extension enable/disable/upgrade lifecycle;
 - outbox worker.
+
+
+## Cross-domain review consolidation
+
+The Game Design, UX, and Architecture reviews of this PR have now been completed. Their blocking comments are compatible with one another and with the Accepted ADR baseline.
+
+The following disposition applies to each substantive review remark:
+
+| Review remark | Classification | Consolidated disposition |
+|---|---|---|
+| Game Design approval of K-04, K-05, K-06, K-07, K-08, K-09, K-12, K-17/K-18/K-19 and the Slice 1 scenario | ACCEPTABLE WITHOUT CHANGE | Retained; the affected sections are updated only where the same review requested clarifications. |
+| Game Design: add a minimum when-to-roll rule | DOMAIN-SPECIFIC CHANGE | Incorporated. For Slice 1 a roll exists only when outcome is uncertain, meaningful risk/consequence exists, and success and failure are both fictionally possible. |
+| Game Design: failure must change the situation and unchanged retries are forbidden | DOMAIN-SPECIFIC CHANGE with cross-domain implementation impact | Incorporated. Failure requires a concrete pre-roll risk, a short final GM adjudication, terminal closure/history, and a retry rule. |
+| Game Design: Slice 1 needs exactly one epistemic state, `Aware` | DOMAIN-SPECIFIC CHANGE | Incorporated. Absence remains Unknown; Believed/Doubted/provenance remain deferred. |
+| Game Design: exact success reveal must be bound before the roll | CROSS-DOMAIN DECISION | Incorporated because UX and Architecture independently require the same contract. |
+| UX: pre-roll compact summary and Apply preview must show recipient plus exact player-visible claim | EDITORIAL / CLARIFICATION with security impact | Incorporated. No post-roll KnowledgeFragment picker is allowed in Slice 1. |
+| UX: failed resolution needs explicit `record/confirm consequence -> Close` interaction | CROSS-DOMAIN DECISION | Incorporated; Game Design and Architecture independently require the same terminal failure path. |
+| UX: avoid a resolution wizard; prefill uniquely determined actor/context/mechanic | DOMAIN-SPECIFIC CHANGE | Incorporated as a Slice 1 UX requirement. |
+| UX: manual refresh is acceptable only as a Slice 1 concession | EDITORIAL / CLARIFICATION | Incorporated. It is not the target live-player MVP experience. |
+| Architecture: `campaign_id` scoping is not authorization; use authenticated server-derived principals and validate every referenced object | DOMAIN-SPECIFIC CHANGE | Incorporated into K-22, Slice 1 permissions, security, and acceptance criteria. |
+| Architecture: persist the bound success effect with the resolution before rolling | CROSS-DOMAIN DECISION | Incorporated; this matches Game Design and UX. |
+| Architecture: define Roll/Resolve and Apply as explicit transaction boundaries; Apply must be idempotent/one-shot | DOMAIN-SPECIFIC CHANGE | Incorporated. Exact tables/status values remain implementation detail. |
+| Architecture: direct in-process orchestration for immediate effect; DomainEvent must not be internal RPC | DOMAIN-SPECIFIC CHANGE | Incorporated into K-22. |
+| Architecture: meaningful history is a projection/read model, not a second mutable source of truth | EDITORIAL / CLARIFICATION | Incorporated. Corrections create new authorized mutations/events; existing history is not rewritten. |
+| Architecture: failed resolution must support terminal adjudication/close | CROSS-DOMAIN DECISION | Incorporated; Game Design and UX independently require it. |
+| All three reviews: Session, Scene, realtime push, generic undo, generic consequence framework, full Rule DSL, combat breadth, generation breadth and advanced epistemics are unnecessary for Slice 1 | SAFE TO DEFER | Retained as explicit Slice 1 exclusions/deferred topics. |
+| Product-level MVP breadth beyond Slice 1 | HUMAN DECISION REQUIRED, but not a Slice 1 blocker | May be deferred. If deferred, only the accepted Slice 1 and existing Accepted baseline become implementation commitments; broader MVP recommendations remain provisional. |
+
+No specialist review introduced a contradiction with an existing ACCEPTED decision.
 
 ---
 
@@ -357,10 +387,10 @@ Player-safe disclosure and campaign isolation are MVP requirements.
 
 ## K-04 — Core gameplay loop
 
-**STATUS:** PROPOSED FOR KICKOFF  
+**STATUS:** REVIEW CONSENSUS — READY TO ACCEPT  
 **DECISION OWNER:** Product Lead with Game Design and UX review  
 **AFFECTED DOMAINS:** Product, Game Design, UX, Architecture  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved in this pack, pending Human acceptance of Slice 1
 
 ### CONTEXT
 
@@ -368,109 +398,134 @@ The implementation gate requires a defined core gameplay loop.
 
 ### EVIDENCE / CURRENT POSITIONS
 
-Product proposes prepare -> situation -> player action -> resolution -> consequences -> world/knowledge update -> continue -> save/resume.
+Product, Game Design, and UX converge on a fiction-first loop. Game Design explicitly approved Option 2 and supplied the minimum when-to-roll rule. UX approved the same interaction model and requires that the live path remain compact rather than becoming a generic form workflow. Architecture can persist the required resolution trace without introducing a workflow engine.
 
-Game Design proposes fictional positioning -> intent -> approach -> GM roll decision -> stakes -> mechanic -> roll -> outcome -> consequences -> state/disclosure -> new fiction.
+### CONSOLIDATED LOOP
 
-UX proposes a live workflow centered on context, search, resolution, consequences, disclosure, and recent activity.
+```text
+Fictional positioning
+-> player intent
+-> GM determines whether a roll is warranted
+-> concrete stakes: Intent + Risk
+-> mechanic/DC and any deterministic success effect are fixed
+-> roll
+-> outcome
+-> success: preview deterministic effect -> GM Apply -> committed mutation
+-> failure: GM records/confirms concrete adjudication -> Close
+-> meaningful history / disclosure
+-> new fictional situation
+```
 
-### OPTIONS
+### MINIMUM WHEN-TO-ROLL RULE
 
-1. Dice-centric loop: choose mechanic -> roll -> update sheet.
-2. Fiction-first loop with explicit intent/stakes and consequence boundary.
-3. Fully freeform narrative with optional disconnected dice utilities.
+For Slice 1, a roll should normally occur only when all three are true:
 
-### TRADE-OFFS
+1. the outcome is uncertain;
+2. there is a meaningful consequence or risk;
+3. both success and failure are fictionally possible.
 
-Option 1 loses the connection between fiction and persistent consequences.  
-Option 2 matches all three disciplines but needs a compact live UX.  
-Option 3 weakens the product's assisted-resolution value.
+If one of those conditions is false, the GM should normally resolve the action without a roll.
+
+### MINIMUM RETRY RULE
+
+After failure, the same approach under materially unchanged fictional circumstances cannot simply be rerolled.
+
+A new attempt requires a meaningful change such as:
+
+- a changed approach or circumstance;
+- new assistance or equipment;
+- additional time;
+- acceptance of a new or increased cost/risk.
 
 ### PRODUCT IMPACT
 
-Option 2 establishes the central assisted-play value.
+This establishes the core assisted-play value while keeping the D20 subordinate to fiction.
 
 ### GAME DESIGN IMPACT
 
-Requires a minimal "when to roll" and stakes contract.
+Game Design owns these semantics and has approved them for Slice 1. They do not freeze the eventual full Custom D20 rules.
 
 ### UX IMPACT
 
-Must avoid turning each check into long form filling.
+The live path must remain one compact surface; persisted fields do not imply a multi-step wizard.
 
 ### ARCHITECTURE IMPACT
 
-Requires correlation between resolution, effects, and history.
+Resolution, outcome, terminal adjudication/effect, and history need durable correlation, not a generic workflow engine.
 
 ### SECURITY IMPACT
 
-Any disclosure resulting from the loop must respect player projections.
+Any disclosure or state mutation resulting from the loop remains backend-authorized.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2**, subject to Game Design confirming the resolution semantics and UX confirming the live interaction cost.
+**Adopt the consolidated fiction-first loop and minimum when-to-roll/retry rules for Slice 1.**
 
 ---
 
 ## K-05 — GM authority
 
-**STATUS:** TO FORMALIZE  
-**DECISION OWNER:** Product Lead / Game Design  
+**STATUS:** CROSS-DOMAIN CONSENSUS — HUMAN FORMALIZATION REQUIRED  
+**DECISION OWNER:** Product Lead / Game Design / Human Project Owner  
 **AFFECTED DOMAINS:** All  
 **BLOCKING:** YES
 
 ### CONTEXT
 
-The decision log already records "GM retains final narrative authority" as To formalize. Consequence automation cannot be specified safely until this is explicit.
+The decision log records "GM retains final narrative authority" as To formalize. The three specialist reviews are now compatible on the meaning required for Slice 1.
 
 ### EVIDENCE / CURRENT POSITIONS
 
-Product, Game Design, UX, and Architecture all assume that significant narrative/canonical changes are not imposed silently.
+Game Design explicitly approves GM final authority over interpretive and authoritative narrative/canonical changes.
+
+UX approves one explicit GM Apply action for the deterministic reveal and explicit GM closure of the failure adjudication.
+
+Architecture supports bounded deterministic automation while requiring authorized, transactional commit.
 
 ### OPTIONS
 
-1. System may automatically commit any rule-derived consequence.
-2. GM retains final authority over interpretive and authoritative narrative/canonical changes; bounded deterministic effects may be automated under an accepted commit policy.
-3. Every change, including HP/resource arithmetic, always requires bespoke GM adjudication.
+1. System may automatically commit any rule-derived narrative/canonical consequence.
+2. GM retains final authority over interpretive and authoritative narrative/canonical changes; bounded deterministic effects may be mechanically derived and committed under an accepted policy.
+3. Every state change, including trivial deterministic arithmetic, always requires bespoke GM interpretation.
 
 ### TRADE-OFFS
 
-Option 1 undermines GM authority.  
-Option 2 preserves assistance while retaining narrative control.  
-Option 3 adds unnecessary friction.
+Option 1 undermines the project's GM-authority direction.  
+Option 2 preserves useful automation without transferring narrative authority to the system.  
+Option 3 adds unnecessary friction and prevents useful deterministic assistance.
 
 ### PRODUCT IMPACT
 
-Defines the product as an assistant to the GM, not a replacement.
+Option 2 defines the application as a GM assistant rather than an autonomous GM.
 
 ### GAME DESIGN IMPACT
 
-Requires classification of deterministic versus interpretive consequences.
+Approved by Game Design.
 
 ### UX IMPACT
 
-Requires a clear confirmation model for meaningful changes.
+Supports explicit confirmation where disclosure or important mutation is cognitively/narratively significant.
 
 ### ARCHITECTURE IMPACT
 
-Requires separation between proposed and committed effects where relevant.
+Supports direct, authorized, transactional state mutation for accepted effects.
 
 ### SECURITY IMPACT
 
-No special change beyond GM-only authorization for adjudication.
+Only authorized server-derived GM principals may adjudicate/commit GM operations.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2 and formalizing D-004 as ACCEPTED after Game Design review and Human approval.**
+**Product recommends Option 2 and formalizing D-004 as ACCEPTED. This now requires Human Project Owner ratification rather than further specialist design.**
 
 ---
 
 ## K-06 — Action resolution / stakes
 
-**STATUS:** PROPOSED FOR KICKOFF  
+**STATUS:** REVIEW CONSENSUS — READY TO ACCEPT AS A CAPABILITY CONTRACT  
 **DECISION OWNER:** Game Design for semantics; Product for capability; Architecture for representation  
 **AFFECTED DOMAINS:** All  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved at capability level
 
 ### CONTEXT
 
@@ -478,147 +533,165 @@ Dice rolls without intent, risk, and consequence context cannot support meaningf
 
 ### EVIDENCE / CURRENT POSITIONS
 
-Product, Game Design, and UX independently converge on an ActionResolution/Stakes concept. Architecture has not accepted a persistence shape.
+Product, Game Design, UX, and Architecture now converge on a bounded persistent resolution trace.
 
-Game Design proposes minimum stakes of Intent + Risk and distinguishes intent from approach.
+Game Design approves **Intent + Risk** as the minimum stakes contract for Slice 1 and does not require a structured Approach field.
 
-### OPTIONS
+UX requires the live interaction to remain compact.
 
-1. Persist only raw dice rolls.
-2. Minimal structured resolution: actor, optional target/context, intent, risk, selected mechanic, difficulty, roll/result, proposed effects, applied effects/history correlation.
-3. General workflow engine modeling all branches before rolling.
+Architecture requires a persistent trace sufficient to reconstruct what the roll meant after reload, but does not require a generic workflow/consequence aggregate.
 
-### TRADE-OFFS
+### CONSOLIDATED MINIMUM CONTRACT
 
-Option 1 loses the meaningful link between action and state change.  
-Option 2 captures enough semantics for the product while remaining bounded.  
-Option 3 over-models narrative play.
+Slice 1 needs a persistent resolution trace capable of correlating:
+
+- actor;
+- current context/target when relevant;
+- Intent;
+- concrete Risk;
+- selected/supported mechanic;
+- DC fixed before roll;
+- exact deterministic success-effect binding fixed before roll;
+- roll inputs/result;
+- success/failure outcome;
+- success Apply or final failure adjudication;
+- terminal/closed state;
+- meaningful history correlation.
+
+Approach remains semantically meaningful in play but does not need to be a persisted Slice 1 field.
 
 ### PRODUCT IMPACT
 
-Option 2 enables assisted consequences and meaningful history.
+This enables assisted consequences and meaningful history without creating a workflow engine.
 
 ### GAME DESIGN IMPACT
 
-Game Design must approve the minimum semantic contract.
+Intent + Risk and the failure/retry semantics are Game Design-approved for Slice 1.
 
 ### UX IMPACT
 
-The live form must stay compact; intent/risk should not become a branching editor.
+Persisted structure must not surface as a wizard; uniquely determined values should be prefilled.
 
 ### ARCHITECTURE IMPACT
 
-Architecture must decide whether this is one aggregate/table, several records, or another representation.
+Architecture retains ownership of exact tables, aggregates, DTOs, endpoints, and status representation.
 
 ### SECURITY IMPACT
 
-GM-only fields and player-visible result information may require different projections.
+GM-only resolution/adjudication fields and player-visible output must remain separately authorized/projected.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2 as a capability requirement, not as a prescribed schema. Game Design and Architecture review are required.**
+**Adopt this as the Slice 1 capability contract, not as a prescribed persistence schema.**
 
 ---
 
 ## K-07 — Minimum D20 contract for Slice 1
 
-**STATUS:** OPEN — GAME DESIGN REVIEW REQUIRED  
+**STATUS:** GAME DESIGN APPROVED FOR SLICE 1  
 **DECISION OWNER:** Game Design  
 **AFFECTED DOMAINS:** Game Design, UX, Architecture, Product  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved for Slice 1
 
 ### CONTEXT
 
-Slice 1 needs one real resolution mechanic but should not freeze the whole Custom D20 system.
+Slice 1 needs one real Custom D20 resolution mechanic without freezing the full system.
 
 ### EVIDENCE / CURRENT POSITIONS
 
-Game Design supports a recognizable D20 check against difficulty/resistance but has not accepted difficulty scale, crits, degree thresholds, opposed rolls, modifier budget, or secondary narrative die.
+Game Design has explicitly approved the following slice-level contract:
 
-### OPTIONS
+```text
+natural d20 + resolved precomputed modifier >= GM-selected DC
+=> success
+else
+=> failure
+```
 
-1. Slice 1 waits for the complete Custom D20 design.
-2. Accept a deliberately minimal slice contract: `1d20 + resolved modifier >= DC`; persist natural roll, modifier, total, DC, and binary outcome; defer crits, degrees, opposed rolls, advantage/disadvantage details, and secondary die.
-3. Use a temporary mechanic unrelated to intended Custom D20.
+The DC is fixed before rolling.
 
-### TRADE-OFFS
+Slice 1 persists:
 
-Option 1 blocks implementation on unrelated game-design breadth.  
-Option 2 validates the integration seam without prematurely freezing advanced rules.  
-Option 3 creates throwaway behavior and migration risk.
+- natural d20 result;
+- resolved modifier;
+- total;
+- DC;
+- binary success/failure outcome.
+
+The precomputed modifier is sufficient for this slice.
+
+### SAFE TO DEFER
+
+- global difficulty ladder;
+- critical rules;
+- degrees of success;
+- opposed checks;
+- final advantage/disadvantage rules;
+- secondary narrative result;
+- modifier-budget design.
 
 ### PRODUCT IMPACT
 
-Option 2 is sufficient to test the core loop.
+This is sufficient to validate the integration seam and does not define the final breadth of Custom D20.
 
 ### GAME DESIGN IMPACT
 
-Game Design must approve or replace the exact minimal formula and determine how a resolved modifier is obtained.
+Approved by the Game Design owner for Slice 1 only.
 
 ### UX IMPACT
 
-Only one simple check needs to be presented in Slice 1.
+One simple check is enough; actor/context/mechanic should be prefilled when uniquely determined.
 
 ### ARCHITECTURE IMPACT
 
-Persistence should record inputs/results without assuming future advanced fields are impossible.
+Persistence must retain the explanatory roll inputs/result without treating this binary contract as the only future resolution shape.
 
 ### SECURITY IMPACT
 
-Roll creation/adjudication permissions must be explicit.
+Only an authorized GM may initiate/adjudicate the Slice 1 resolution operation.
 
 ### RECOMMENDATION
 
-**Product requests Game Design review of Option 2.** Product does not claim authority to accept the D20 formula.
+**Adopt this exact minimum contract for Slice 1. Do not infer final Custom D20 crit/degree/opposed/advantage rules from it.**
 
 ---
 
 ## K-08 — Deterministic versus interpretive consequences
 
-**STATUS:** PROPOSED FOR KICKOFF  
+**STATUS:** GAME DESIGN APPROVED — REVIEW CONSENSUS  
 **DECISION OWNER:** Game Design with Product/UX review  
 **AFFECTED DOMAINS:** All  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved conceptually
 
 ### CONTEXT
 
-The system needs a bounded rule for what may be calculated/applied automatically and what remains adjudication.
+The system needs predictable semantics for what can be mechanically derived and what remains GM judgment.
+
+### CONSOLIDATED CLASSIFICATION
+
+1. **Deterministic effects** — mechanically complete once the pre-roll contract is fixed; for example the Slice 1 bound reveal of one exact claim to one exact character.
+2. **Bounded interpretive consequences** — the rules establish that a consequence is warranted, but the GM selects/confirms/edits its concrete fictional meaning.
+3. **Authoritative narrative/canonical changes** — major narrative/canonical decisions remain GM-authored/adjudicated.
 
 ### EVIDENCE / CURRENT POSITIONS
 
-Product and Game Design converge on three broad classes:
-
-- deterministic mechanical/explicit effects;
-- bounded interpretive narrative consequences;
-- authoritative narrative/canonical changes.
-
-### OPTIONS
-
-1. Binary split: automatic versus manual.
-2. Three classes as above.
-3. Per-rule freeform configuration with no global semantics.
-
-### TRADE-OFFS
-
-Option 1 is simpler but collapses useful distinctions.  
-Option 2 matches current convergence and supports future automation policy.  
-Option 3 creates inconsistent behavior and configuration burden.
+Game Design explicitly approved this three-way distinction. UX does not want the GM manually classifying consequence type during play; supported behavior should already determine the class. Architecture supports typed/direct Slice 1 handling rather than generic scripting.
 
 ### PRODUCT IMPACT
 
-Option 2 gives users predictable automation.
+Provides predictable assistance without hiding narrative authority.
 
 ### GAME DESIGN IMPACT
 
-Game Design owns classification semantics.
+Classification semantics are owned and approved by Game Design.
 
 ### UX IMPACT
 
-UI can present deterministic effects differently from interpretive suggestions.
+The UI may present deterministic previews differently from interpretive adjudication without exposing internal classification controls.
 
 ### ARCHITECTURE IMPACT
 
-Effect types can remain bounded rather than generic scripts.
+Slice 1 needs only its direct typed reveal effect, not a generic effect language.
 
 ### SECURITY IMPACT
 
@@ -626,60 +699,78 @@ Only authorized actors may commit campaign-changing effects.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2, subject to Game Design approval.**
+**Adopt the three-class model as the kickoff direction. Slice 1 implements only the bounded behavior it actually needs.**
 
 ---
 
 ## K-09 — Confirmation / commit boundary
 
-**STATUS:** PROPOSED FOR KICKOFF  
+**STATUS:** REVIEW CONSENSUS — READY TO ACCEPT FOR SLICE 1  
 **DECISION OWNER:** Cross-domain  
 **AFFECTED DOMAINS:** Product, Game Design, UX, Architecture  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved for Slice 1
 
 ### CONTEXT
 
-The team must choose how a calculated effect becomes canonical mutable state.
+The team needs a clear point where a calculated outcome becomes canonical mutable state.
 
-### EVIDENCE / CURRENT POSITIONS
+### CONSOLIDATED SLICE 1 CONTRACT
 
-UX wants explicit action for significant mutations. Game Design warns against mechanical outcomes silently becoming narrative truth. Product favors a proposed -> accepted -> committed boundary. Architecture requires immediately consistent effects to execute synchronously when committed.
+**Before Roll**
 
-### OPTIONS
+The exact deterministic success reveal is already bound to:
 
-1. Auto-commit every deterministic effect immediately after the roll.
-2. For Slice 1, calculate deterministic effects and require one GM **Apply** action; interpretive consequences always require GM selection/edit/acceptance. Revisit selective auto-apply after playtesting.
-3. Require per-effect confirmation forever.
+- one recipient character;
+- one exact KnowledgeFragment/player-visible claim.
 
-### TRADE-OFFS
+The compact pre-roll summary shows actor/context, Intent, concrete Risk, mechanic/DC, and the exact success effect.
 
-Option 1 maximizes speed but increases surprise/correction requirements.  
-Option 2 is safe, simple, and provides a future migration path to auto-apply.  
-Option 3 may create excessive click cost.
+**Success**
+
+```text
+successful roll
+-> derived preview from persisted bound effect
+-> GM verifies recipient + exact player-visible claim
+-> Apply
+-> atomic canonical mutation + resolution state + DomainEvent
+```
+
+Apply is one-shot/idempotent: retry, double-click, or network retry must not duplicate CharacterKnowledge or history.
+
+**Failure**
+
+```text
+failed roll
+-> GM records/confirms short concrete adjudication of the pre-declared Risk
+-> Close
+-> terminal resolution + meaningful history
+```
+
+This does not require a generic consequence editor or structured failure-world-state engine in Slice 1.
 
 ### PRODUCT IMPACT
 
-Option 2 validates automation without overcommitting.
+This validates automation conservatively while giving both outcomes a complete playable terminal path.
 
 ### GAME DESIGN IMPACT
 
-Effects must be deterministic before they can appear as precomputed proposals.
+The success effect is deterministic because its recipient and claim are fixed before rolling. Failure must change the situation.
 
 ### UX IMPACT
 
-Needs a compact preview + Apply interaction.
+Success uses compact preview + Apply. Failure uses one small record/confirm + Close interaction.
 
 ### ARCHITECTURE IMPACT
 
-Commit must be transactional with state mutation and history event.
+Roll/Resolve and Apply/Close are explicit application-level transaction boundaries. Exact persistence statuses remain implementation detail.
 
 ### SECURITY IMPACT
 
-Only an authorized GM commits the effect in Slice 1.
+The backend re-authorizes the GM at Apply/Close and verifies all referenced objects belong to the same authorized campaign.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2 for Slice 1.**
+**Adopt this boundary for Slice 1. Selective auto-apply may be reconsidered only after playtesting.**
 
 ---
 
@@ -791,54 +882,70 @@ This is a primary Slice 1 security test: hidden knowledge must not reach the pla
 
 ## K-12 — Knowledge / disclosure required for MVP
 
-**STATUS:** PROPOSED FOR KICKOFF  
+**STATUS:** REVIEW CONSENSUS — SLICE 1 SEMANTICS DEFINED  
 **DECISION OWNER:** Product for scope; Game Design for epistemic semantics; Architecture for projection  
 **AFFECTED DOMAINS:** All  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved for Slice 1
 
 ### CONTEXT
 
-Knowledge is both a differentiator and an already accepted architecture boundary. Slice 1 should validate it without requiring the full misinformation/provenance system.
+Knowledge is both a product differentiator and an Accepted architecture boundary. Slice 1 should validate it without importing the full belief/provenance system.
 
 ### EVIDENCE / CURRENT POSITIONS
 
-ADR-002 and ADR-003 are Accepted. Game Design considers knowledge a gameplay system and keeps exact states open. UX wants targeted reveal and explicit preview.
+ADR-002 and ADR-003 are Accepted.
 
-### OPTIONS
+Game Design approves exactly one Slice 1 epistemic state:
 
-1. Defer knowledge from Slice 1.
-2. Slice 1 supports one GM-only `KnowledgeFragment` and targeted reveal to one character; nuanced states/provenance are deferred.
-3. Implement full aware/believed/doubted/provenance/misinformation mechanics immediately.
+**Aware** — the character has been exposed to the claim and can act on that information. `Aware` does not assert objective truth and does not assert full belief.
 
-### TRADE-OFFS
+Absence of `CharacterKnowledge` continues to mean Unknown.
 
-Option 1 leaves accepted disclosure architecture untested.  
-Option 2 tests the critical boundary with minimal semantics.  
-Option 3 over-scopes Game Design and UI.
+UX approves a targeted reveal but requires the Apply preview to show the exact recipient and exact player-visible disclosure.
+
+Architecture can support `Aware` without designing later epistemic states.
+
+### SLICE 1 CONTRACT
+
+- one GM-only `KnowledgeFragment`;
+- no `CharacterKnowledge` initially;
+- exact fragment and recipient bound to the resolution before roll;
+- successful GM Apply creates/updates `CharacterKnowledge` to `Aware`;
+- player projection gains only the player-visible claim;
+- GM veracity/internal metadata remains absent from the player response.
+
+### SAFE TO DEFER
+
+- Believed/Doubted states;
+- provenance;
+- misinformation workflow;
+- sharing semantics;
+- infohazards;
+- broader epistemic-state taxonomy.
 
 ### PRODUCT IMPACT
 
-Option 2 validates an important differentiator early.
+Validates an important product differentiator early.
 
 ### GAME DESIGN IMPACT
 
-Game Design must approve the minimum meaning of the first visible state; nuanced epistemic states remain open.
+The minimum state is now defined by Game Design.
 
 ### UX IMPACT
 
-Needs a clear reveal action and player-visible result.
+Disclosure is explicit and previewed because it is cognitively irreversible once seen by a player.
 
 ### ARCHITECTURE IMPACT
 
-Uses accepted KnowledgeFragment/CharacterKnowledge and projection boundaries.
+Uses the Accepted KnowledgeFragment/CharacterKnowledge and projection boundaries without over-designing later states.
 
 ### SECURITY IMPACT
 
-The secret must be absent from unauthorized player responses before reveal.
+The hidden claim must be absent before Apply, and only the intended authorized projection may receive it afterward.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2.**
+**Adopt `Unknown by absence -> Aware` as the complete epistemic scope of Slice 1.**
 
 ---
 
@@ -1320,98 +1427,171 @@ Destructive actions require GM authorization.
 
 ## K-22 — Minimum architecture contracts
 
-**STATUS:** OPEN — ARCHITECTURE REVIEW REQUIRED  
+**STATUS:** ARCHITECTURE APPROVED WITH CONSOLIDATED CONTRACTS  
 **DECISION OWNER:** Architecture  
 **AFFECTED DOMAINS:** Architecture, Security, Product, UX, Game Design  
-**BLOCKING:** YES
+**BLOCKING:** YES — resolved at kickoff-contract level
 
 ### CONTEXT
 
-Architecture has accepted the domain/data boundaries but still lists the concrete application stack and detailed module direction as proposals.
+Architecture has approved the minimum-contract approach and the concrete stack for Slice 1/MVP. The review requested stronger authorization, transaction, idempotency, orchestration, and history contracts.
 
-### EVIDENCE / CURRENT POSITIONS
+### ACCEPTED BY ARCHITECTURE FOR SLICE 1 / MVP DIRECTION
 
-The Architecture sync proposes React + FastAPI modular monolith + PostgreSQL and Docker Compose. Accepted ADRs already define Entity, Knowledge, projections, events/outbox, and Custom D20 boundaries.
+- React + FastAPI modular monolith + PostgreSQL.
+- Docker Compose for local orchestration.
+- PostgreSQL as the single source of truth for mutable campaign state.
+- No Kubernetes, broker, worker fleet, or distributed infrastructure justified by Slice 1.
+- Explicit player-facing projections.
+- Persistent resolution trace/correlation, not raw dice only.
+- Immediate accepted effects execute synchronously in the same PostgreSQL transaction as canonical state mutation and significant `DomainEvent`.
+- No outbox worker in Slice 1.
+- No generic Rule Effect DSL; the knowledge reveal is represented directly/typed.
+- No persistent Session or Scene in Slice 1.
+- No generated-candidate persistence in Slice 1.
+- Manual re-fetch is technically acceptable for Slice 1; realtime remains deferred.
 
-### OPTIONS
+### AUTHORIZATION CONTRACT
 
-1. Finalize a broad architecture before Slice 1.
-2. Accept only the minimum contracts required by Slice 1 and keep broader module/generator/extension design deferred.
-3. Implement without explicit architecture contracts.
+`campaign_id` is an isolation invariant, **not** sufficient authorization.
 
-### TRADE-OFFS
+Slice 1 requires two distinct authenticated principals:
 
-Option 1 risks horizontal over-design.  
-Option 2 fits vertical-slice and solo-development constraints.  
-Option 3 risks incompatible implementation decisions.
+- one GM;
+- one Player.
 
-### PRODUCT IMPACT
+The backend derives the acting principal from authentication and never trusts caller-supplied role, campaign membership, or character ownership.
 
-Option 2 provides enough stability to start implementation after kickoff.
+For every relevant read/mutation it validates authorization and same-campaign consistency for every referenced object, including:
 
-### GAME DESIGN IMPACT
+- campaign;
+- acting character;
+- player assignment;
+- context/target;
+- bound KnowledgeFragment;
+- reveal recipient.
 
-Architecture must not freeze unresolved rule semantics.
+A syntactically valid identifier plus a caller-supplied matching `campaign_id` is never sufficient authorization.
 
-### UX IMPACT
+Authentication provider/technology is not selected by this kickoff pack.
 
-API shape must support the selected GM/player workflow and disclosure boundary.
+### PERSISTED SUCCESS-EFFECT CONTRACT
 
-### ARCHITECTURE IMPACT
+The exact KnowledgeFragment and recipient character are retained by the persisted resolution **before the roll**.
 
-Product proposes that Architecture review at least these Slice 1 contracts:
+After reload the backend can reconstruct exactly what success meant without client-only state or a post-roll picker.
 
-- concrete stack: React + FastAPI modular monolith + PostgreSQL;
-- Docker Compose for local orchestration if still appropriate;
-- GM and Player campaign membership/authorization;
-- player-to-character assignment;
-- strict `campaign_id` scoping;
-- one explicit player read projection;
-- persistent trace of the check/resolution sufficient to correlate intent, risk, roll, outcome, applied consequence, and history;
-- synchronous transaction for an accepted immediate effect + current-state mutation + `DomainEvent`;
-- no outbox worker unless Slice 1 produces a real asynchronous durability requirement;
-- no generic Rule Effect DSL in Slice 1: at most the single typed effect needed by the scenario;
-- no Session/Scene persistence in Slice 1;
-- no generated-candidate persistence in Slice 1.
+The preview is derived/transient; a separate generic `ConsequenceProposal` aggregate is not required.
 
-The exact tables, aggregates, endpoints, and module boundaries remain Architecture-owned.
+### TRANSACTION CONTRACT
 
-### SECURITY IMPACT
+**Roll/Resolve commit**
 
-Authorization, campaign isolation, character assignment, and projection correctness are non-negotiable acceptance criteria.
+Persist the resolution contract and roll result, including the pre-bound success effect.
+
+**Apply success commit**
+
+In one transaction:
+
+1. derive/re-authorize the GM principal;
+2. verify the resolution is successful and not already applied/closed;
+3. verify all referenced objects remain in the authorized campaign;
+4. create/update the recipient `CharacterKnowledge` to `Aware`;
+5. mark/correlate the resolution as applied/closed;
+6. append the significant `DomainEvent`.
+
+Apply is idempotent/one-shot.
+
+**Close failure commit**
+
+Persist the GM's concrete final adjudication of the declared Risk, close the resolution, and commit the correlated meaningful history consistently.
+
+No generic failure-consequence engine is required.
+
+### ORCHESTRATION CONTRACT
+
+The immediate knowledge mutation occurs through a direct in-process application/domain call in the same unit of work.
+
+Do **not** implement:
+
+```text
+Resolution DomainEvent -> internal event subscriber -> Knowledge mutation
+```
+
+`DomainEvent` is append-only history/audit output for the committed change, not internal RPC. Future outbox publication remains separate.
+
+### HISTORY CONTRACT
+
+Slice 1 does not need a second editable history store.
+
+Human-readable GM activity/history is a projection/read model derived from resolution/current state/events.
+
+Corrections create new authorized mutations/events. Existing append-only history is not rewritten.
+
+### SECURITY / TESTABILITY CONTRACT
+
+Integration tests must prove at least:
+
+1. hidden knowledge is absent from the player projection before Apply and present after Apply;
+2. GM/Player authorization is enforced server-side using authenticated principals;
+3. the Player cannot invoke GM resolution, adjudication, Apply, or Close operations;
+4. player-to-character assignment is server-authoritative;
+5. cross-campaign reads, references, and mutations fail, including embedded cross-campaign object references;
+6. successful Apply is atomic and safe to retry/double-submit;
+7. rollback cannot leave `CharacterKnowledge`, resolution state, and history inconsistent;
+8. failed resolution can be concretely adjudicated and closed;
+9. reload reconstructs the persisted resolution and bound success effect without transient client state.
+
+If a tunnel such as ngrok or Cloudflare Tunnel is used, it is transport/exposure only and is never the authentication/authorization boundary.
+
+### SHOULD NOT BE BUILT YET
+
+- generic `ConsequenceProposal` / `AppliedChangeSet` framework merely for Slice 1;
+- event-driven internal command routing;
+- generic workflow/state-machine engine for ActionResolution;
+- generic scripting/expression language;
+- nullable Session/Scene/generator fields for future-proofing;
+- broker/async worker/distributed services;
+- plugin runtime/marketplace;
+- Elasticsearch/OpenSearch;
+- Kubernetes for Slice 1.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2 and requests Architecture to approve, amend, or reject the listed minimum contracts.**
+**Adopt these as the minimum Architecture contracts for Slice 1. Exact tables, endpoints, classes, and status values remain implementation decisions.**
 
 ---
 
 ## K-23 — First playable vertical slice
 
-**STATUS:** PROPOSED FOR KICKOFF  
-**DECISION OWNER:** Product Lead / Human Project Owner with cross-domain review  
+**STATUS:** CROSS-DOMAIN REVIEW CONSENSUS — HUMAN ACCEPTANCE REQUIRED  
+**DECISION OWNER:** Product Lead / Human Project Owner  
 **AFFECTED DOMAINS:** All  
 **BLOCKING:** YES
 
 ### CONTEXT
 
-The first slice must validate a real GM/player loop without importing combat, generation, Session/Scene, search, advanced knowledge states, or a generic rules engine.
+All three specialist reviews support the terminal-slicing scenario after the clarifications incorporated in this pack.
 
 ### EVIDENCE / CURRENT POSITIONS
 
-All disciplines need a concrete scenario before they can close their blocking questions. The accepted knowledge/projection architecture is valuable to exercise early. Game Design's unresolved combat breadth makes a non-combat check a safer first resolution.
+Game Design approves a non-combat terminal-slicing slice and the minimum D20/stakes semantics.
+
+UX approves the scenario provided both success and failure have clear terminal interactions and the live path remains compact.
+
+Architecture approves the scenario and its minimal persistence/security/transaction footprint.
 
 ### OPTIONS
 
 1. CRUD-only campaign/character/world slice.
-2. Non-combat "slice a terminal and reveal a secret" loop using one Custom D20 check, one consequence application, and one player-safe knowledge reveal.
-3. Full encounter including combat, initiative, generation, and session tracking.
+2. Consolidated non-combat "slice a terminal and reveal a secret" loop.
+3. Broader first encounter including combat, generation, Session/Scene, or other deferred systems.
 
 ### TRADE-OFFS
 
 Option 1 does not test the gameplay loop.  
-Option 2 crosses Product, Game Design, UX, Architecture, persistence, permissions, and disclosure with bounded mechanics.  
-Option 3 forces too many open systems into the first implementation.
+Option 2 exercises a real end-to-end GM/player loop with bounded mechanics and strong security/persistence tests.  
+Option 3 imports multiple unresolved systems and weakens delivery focus.
 
 ### PRODUCT IMPACT
 
@@ -1419,23 +1599,23 @@ Option 2 validates the core assisted-play hypothesis.
 
 ### GAME DESIGN IMPACT
 
-Requires only a minimal check/stakes contract.
+The required minimum semantics are now approved.
 
 ### UX IMPACT
 
-Requires minimal GM authoring, live resolution, Apply, reveal, and player read surfaces.
+The success and failure live paths are now complete and compact.
 
 ### ARCHITECTURE IMPACT
 
-Exercises campaign isolation, entities, character, knowledge, projection, resolution trace, transaction, and DomainEvent.
+The minimum contracts are now defined without horizontal platform work.
 
 ### SECURITY IMPACT
 
-Directly tests that the player cannot access the secret before reveal.
+The slice directly tests principal-based authorization, cross-campaign reference rejection, and pre/post-reveal disclosure.
 
 ### RECOMMENDATION
 
-**Product recommends Option 2. Detailed Slice 1 specification is in Phase 3 below.**
+**Product recommends Option 2. The consolidated detailed specification is in Phase 3.**
 
 ---
 
@@ -1506,146 +1686,241 @@ Reduces unnecessary attack surface.
 
 ---
 
-# Phase 3 — Proposed First Vertical Slice
+# Phase 3 — Consolidated First Vertical Slice
 
 ## Slice 1 — "Slice the terminal, reveal the secret"
 
-**Status:** PROPOSED FOR CROSS-DOMAIN REVIEW
+**Status:** CROSS-DOMAIN REVIEW CONSENSUS — HUMAN ACCEPTANCE PENDING
 
 ### Product goal
 
-Prove that one GM and one player can use the application to move from persistent campaign context to a real D20 action, commit one consequence, safely reveal previously hidden information, and reload the resulting state.
+Prove that one GM and one Player can use the application end-to-end to move from persistent campaign context to a fiction-first D20 action, complete either success or failure cleanly, persist the result, safely reveal previously hidden information on success, and reconstruct the state after reload.
 
-This slice is intentionally **not** a combat, generation, search, Session, Scene, or AI slice.
+This slice is intentionally **not** a combat, generation, search, Session, Scene, realtime, or AI slice.
 
-## User scenario
+## Actors and authentication
 
-During a Star Wars session, a player character wants to slice an Imperial cargo terminal to discover where a confiscated shipment was transferred.
-
-The GM has already authored a campaign, one player character, one location, and one hidden knowledge fragment.
-
-The player cannot see the fragment before the action.
-
-The player declares the intended action at the table. In Slice 1 this declaration does not need a dedicated player-to-GM messaging feature.
-
-The GM creates a resolution with:
-
-- actor: the assigned player character;
-- context/target: the Imperial cargo terminal or current location reference;
-- intent: discover where the confiscated shipment was transferred;
-- risk: the intrusion may be noticed;
-- mechanic/skill: the single Custom D20 skill/check supported by the slice;
-- difficulty: a GM-selected DC supported by the minimum Game Design contract.
-
-The system rolls/resolves the check.
-
-On success, the system proposes one deterministic consequence:
-
-- reveal a predefined `KnowledgeFragment` to the acting character.
-
-The GM sees exactly what will change and chooses **Apply**.
-
-The application creates/updates the required `CharacterKnowledge`, writes meaningful history, and the player's projection now includes the discovered information.
-
-If the check fails, the slice only needs to persist the failed resolution and show the declared risk to the GM for narrative adjudication. The slice does **not** need a generic persistent consequence engine for the failure risk.
-
-## Actors
+Slice 1 uses **two distinct authenticated principals**:
 
 ### GM
 
-- owns/manages the campaign;
+- is authorized as GM for the campaign;
 - creates the minimal campaign content;
 - sees canonical/hidden information;
 - initiates and adjudicates the resolution;
-- commits the deterministic reveal effect.
+- commits the success reveal or closes the failed resolution.
 
 ### Player
 
-- is a member of the campaign;
-- is assigned to one player character;
-- can read the allowed projection of that character;
+- is authorized as Player for the campaign;
+- is server-assigned to one Player Character;
+- can read only the allowed player projection;
 - cannot access GM-only knowledge;
-- can observe the newly revealed knowledge after the GM applies the result.
+- cannot invoke GM resolution/adjudication/Apply/Close operations.
+
+The backend derives principal identity and authorization from authentication. Caller-supplied role, membership, assignment, ownership, or `campaign_id` is never trusted as authorization.
+
+The authentication provider/technology itself is out of scope for the kickoff decision.
 
 ## Initial state
 
-The UI must allow the GM to establish, at minimum:
+Through application UI/API rather than direct database editing, establish:
 
 - one Campaign;
-- one GM membership;
-- one Player membership;
-- one player-to-character assignment;
-- one Player Character with the precomputed skill/modifier required by the accepted minimal D20 contract;
-- one Location;
-- optionally one target/world object only if Architecture/UX judge it necessary; otherwise the location can provide resolution context;
-- one hidden `KnowledgeFragment` whose GM-side veracity is defined;
-- no `CharacterKnowledge` for that fragment at the start.
+- one authenticated GM membership;
+- one authenticated Player membership;
+- one server-authoritative player-to-character assignment;
+- one Player Character with the precomputed modifier required by the approved Slice 1 D20 contract;
+- one Location/current context;
+- optionally one target/world object only if implementation/UX needs it; the Location may be sufficient context;
+- one hidden `KnowledgeFragment` with GM-side veracity metadata and player-visible claim text;
+- no `CharacterKnowledge` for that fragment.
 
 No procedural generator is used.
 
-## GM actions
+## Fiction and when-to-roll
 
-1. Create/open campaign.
-2. Create or select the player character.
-3. Create/select the location.
-4. Create the hidden knowledge fragment.
-5. Verify that the player does not currently know it.
-6. Start the live resolution workflow; no persistent `Session` entity is required.
-7. Select actor.
-8. Enter/select intent and risk.
-9. Select the minimal supported skill/mechanic.
-10. Set/select DC.
-11. Roll/resolve.
-12. Inspect outcome and proposed reveal effect.
-13. Click **Apply** on success.
-14. See meaningful confirmation/history.
+The player declares at the table that the character wants to slice an Imperial cargo terminal to discover where a confiscated shipment was transferred.
 
-## Player actions
+A dedicated player-to-GM intent messaging feature is out of scope.
 
-1. Authenticate/access the campaign.
-2. Open the assigned character view.
-3. Verify that the hidden fragment is absent before reveal.
-4. Declare the fictional action at the table; dedicated in-app intent submission is out of scope.
-5. After the GM applies the successful consequence, refresh or otherwise retrieve the updated player projection.
-6. See the newly revealed knowledge.
+The GM requests a roll only because all three conditions are true:
 
-Realtime push is not required; manual refresh or simple re-fetch is acceptable for Slice 1.
+1. the outcome is uncertain;
+2. there is a meaningful consequence/risk;
+3. both success and failure are fictionally possible.
 
-## Game mechanic used
+If those conditions are not true, the action should normally resolve without a roll.
 
-Only one minimal Custom D20 check.
+## Pre-roll resolution contract
 
-Candidate contract requiring Game Design approval:
+Before the D20 is rolled, the resolution binds:
+
+- actor: the assigned Player Character;
+- current context/target;
+- **Intent:** discover where the confiscated shipment was transferred;
+- **Risk:** on failure, the intrusion is noticed by Imperial security;
+- supported mechanic/skill;
+- GM-selected DC;
+- **deterministic success effect:** reveal this exact predefined `KnowledgeFragment` to this exact acting/recipient character.
+
+The exact recipient and exact fragment are fixed before rolling.
+
+There is no post-roll fragment picker.
+
+### Live UX requirement
+
+The normal live path is one compact surface.
+
+Where uniquely determined by Slice 1 context:
+
+- actor is prefilled;
+- current context is prefilled;
+- the single supported mechanic is prefilled.
+
+The GM primarily enters/edits Intent, Risk, and DC and verifies the pre-bound success effect.
+
+The pre-roll summary shows the exact success contract without exposing internal persistence terminology.
+
+## Game mechanic
+
+The Game Design-approved Slice 1 contract is:
 
 ```text
-natural d20 + resolved character modifier >= GM-selected DC
+natural d20 + resolved precomputed character modifier >= GM-selected DC
 => success
 else
 => failure
 ```
 
-The persisted result should retain enough information to explain the roll:
+The DC is fixed before Roll.
+
+Persist:
 
 - natural d20 result;
 - resolved modifier;
 - total;
 - DC;
-- success/failure.
+- binary outcome.
 
-The slice does not require:
+Slice 1 does not decide the final Custom D20 rules for crits, degrees, opposed checks, advantage/disadvantage, difficulty ladder, or secondary narrative result.
 
-- critical rules;
-- degree-of-success bands;
-- opposed checks;
-- final advantage/disadvantage rules;
-- secondary narrative die;
-- combat actions;
-- initiative.
+## Roll / Resolve transaction
 
-The stakes contract should require at least:
+The Roll/Resolve operation persists enough state to reconstruct after reload:
 
+- actor/context;
 - Intent;
-- Risk.
+- concrete Risk;
+- mechanic;
+- DC;
+- pre-bound recipient + success KnowledgeFragment reference;
+- roll inputs/result;
+- outcome.
+
+Persisting several fields does not imply a multi-step UX wizard.
+
+## Success path
+
+On success:
+
+1. the application derives a preview from the already persisted success-effect binding;
+2. the preview shows the **recipient character** and the **exact player-visible claim text**;
+3. the GM chooses **Apply**;
+4. the backend re-authorizes the GM principal;
+5. the backend verifies the resolution is successful and not already applied/closed;
+6. the backend validates campaign consistency of all referenced objects;
+7. in one PostgreSQL transaction:
+   - create/update the recipient `CharacterKnowledge` to **Aware**;
+   - mark/correlate the resolution as applied/closed;
+   - append the significant `DomainEvent`;
+8. the player projection can now include the revealed claim.
+
+Apply is one-shot/idempotent. A retry, double-click, or network retry cannot duplicate the effect or history.
+
+The immediate Knowledge mutation uses direct in-process application/domain orchestration. `DomainEvent` is not used as internal RPC.
+
+## Failure path
+
+On failure:
+
+1. the failed roll is persisted;
+2. the GM is shown the concrete pre-declared Risk;
+3. the GM records/confirms one short concrete adjudication of how the risk manifests;
+4. the GM chooses **Close**;
+5. the final adjudication and terminal resolution/history are committed consistently.
+
+Example adjudication:
+
+> Imperial security logs the intrusion and the terminal enters an alerted state in the fiction.
+
+Slice 1 does not require a generic structured world mutation or generic consequence engine for this failure.
+
+### Retry rule
+
+The same approach under materially unchanged fictional circumstances cannot simply be rerolled.
+
+A new attempt requires a meaningful change, such as:
+
+- changed approach/circumstance;
+- new assistance/equipment;
+- additional time;
+- new/increased cost or risk.
+
+## Knowledge semantics
+
+Slice 1 uses exactly one explicit `CharacterKnowledge` state:
+
+**Aware** — the character has been exposed to the claim and can act on it.
+
+`Aware` does not imply that the claim is objectively true or fully believed.
+
+Absence of `CharacterKnowledge` means Unknown.
+
+Believed, Doubted, provenance, misinformation workflow, sharing semantics, and infohazards remain deferred.
+
+## Hidden and revealed information
+
+### Before Apply
+
+- GM can see the `KnowledgeFragment` and GM-side metadata.
+- Player projection contains neither the hidden claim nor GM veracity/internal metadata.
+
+### Apply preview
+
+The GM sees:
+
+- exact recipient;
+- exact player-visible claim.
+
+### After Apply
+
+- recipient `CharacterKnowledge` is `Aware`;
+- the authorized player projection contains the player-visible claim;
+- GM veracity/internal metadata remains absent.
+
+Frontend hiding is never an authorization mechanism.
+
+## History
+
+`DomainEvent` remains append-only audit/history output.
+
+A GM-facing readable activity feed/history may be a projection/read model derived from resolution/current state/events.
+
+There is no separate editable history source of truth.
+
+Corrections create new authorized mutations/events; existing history is not rewritten.
+
+## Player flow
+
+1. Authenticate as the Player principal.
+2. Open the assigned character projection.
+3. Verify that the hidden claim is absent.
+4. Declare the fictional action at the table.
+5. After successful GM Apply, re-fetch the player projection.
+6. See the newly revealed claim.
+
+Manual refresh/simple re-fetch is acceptable as a **Slice 1 concession only**. It is not the target live-player MVP experience; polling or push can be introduced later when justified.
 
 ## Data persisted
 
@@ -1655,91 +1930,67 @@ Minimum product-level persistence requirements:
 - campaign memberships/roles;
 - player-to-character assignment;
 - Character;
-- Location;
-- KnowledgeFragment;
-- CharacterKnowledge after reveal;
-- resolution/check trace sufficient to recover actor, intent, risk, mechanic, DC, roll, outcome, and consequence correlation;
-- current mutable state resulting from the reveal;
-- append-only DomainEvent/history for significant mutations.
+- Location/current context reference;
+- `KnowledgeFragment`;
+- `CharacterKnowledge` = `Aware` after successful Apply;
+- resolution trace sufficient to reconstruct pre-roll contract, bound success effect, roll, outcome, Apply/Close and final adjudication;
+- current mutable state;
+- append-only significant `DomainEvent` history.
 
-Architecture decides exact tables, aggregates, DTOs, and event names.
+Architecture owns exact schema/API/class/status representation.
 
-## Permissions
+## Authorization invariants
 
-### GM
+Every relevant read/write is both campaign-scoped and principal-authorized.
 
-May:
+The backend validates that campaign, acting character, assignment, context/target, bound fragment, and reveal recipient belong to the same authorized campaign.
 
-- view canonical campaign content;
-- author the fragment;
-- create/adjudicate the resolution;
-- commit the reveal.
+A valid identifier with a matching caller-supplied `campaign_id` is never sufficient.
 
-### Player
-
-May:
-
-- access only campaigns they belong to;
-- view only the assigned/authorized character projection;
-- receive only knowledge allowed by the accepted projection/disclosure rules;
-- not create or commit GM consequences in Slice 1.
-
-Every relevant read/write remains scoped by `campaign_id`.
-
-## Hidden and revealed information
-
-Before Apply:
-
-- GM can see the KnowledgeFragment.
-- Player API/projection must not contain the hidden fragment.
-
-After Apply:
-
-- the appropriate CharacterKnowledge state exists;
-- the player projection includes the player-visible content of the fragment;
-- unrelated GM-only metadata/veracity/internal fields remain absent.
-
-Frontend hiding is not an acceptable implementation.
+Cross-campaign embedded references must be rejected.
 
 ## Expected result
 
-The project has proven, end-to-end, that:
+The project proves end-to-end:
 
 ```text
 persistent campaign context
--> player intent
--> GM stakes
--> Custom D20 check
--> outcome
--> proposed deterministic consequence
--> explicit GM commit
--> persistent knowledge mutation
--> safe player disclosure
--> history
+-> fictional player intent
+-> when-to-roll decision
+-> Intent + concrete Risk + bound success effect
+-> minimal Custom D20
+-> success OR failure
+-> explicit terminal GM action
+-> atomic/correlated persistence
+-> safe player disclosure when applicable
+-> meaningful history
 -> reload with state intact
 ```
 
-This is the minimum useful validation of the product architecture and gameplay-assistance concept.
-
 ## Acceptance criteria
 
-1. The GM can create/open the campaign from the application without direct DB editing.
-2. The GM can establish one player membership and one player-to-character assignment.
-3. The GM can create the minimum character, location, and hidden KnowledgeFragment required by the scenario.
-4. Before reveal, the player-facing API/view does not expose the hidden fragment or GM-only canonical metadata.
-5. The GM can create the minimal resolution with actor, intent, risk, mechanic, and DC.
-6. The system records a D20 result using the Game Design-approved minimum contract.
-7. The outcome is persisted and correlated with the resolution.
-8. On success, the system presents the predefined knowledge-reveal effect before commit.
-9. The player cannot commit that effect.
-10. The GM can commit it with one explicit Apply action.
-11. The reveal mutation and its significant DomainEvent/history record are committed consistently.
-12. After commit, the player-facing projection exposes the newly revealed knowledge and still excludes GM-only data.
-13. A full application reload preserves the campaign, resolution result, reveal state, and player-visible knowledge.
-14. Cross-campaign access attempts cannot expose or mutate the slice data.
-15. The slice does not require an outbox worker to remain correct.
-16. No generic Rule Effect DSL is required merely to implement the single reveal effect.
-17. A failed check can be recorded without forcing the system to invent or silently persist an interpretive narrative consequence.
+1. The GM and Player operate as two distinct authenticated principals.
+2. The GM can create/open the minimum campaign content without direct DB editing.
+3. The backend owns campaign membership, GM/Player role, and player-to-character assignment.
+4. Before Apply, the player-facing API/view does not expose the hidden claim or GM-only veracity/internal metadata.
+5. The Player cannot invoke GM resolution, adjudication, Apply, or Close operations.
+6. The GM can establish the resolution on one compact live surface; uniquely determined actor/context/mechanic are prefilled rather than redundantly selected.
+7. Before Roll, Intent, concrete Risk, DC, exact recipient, and exact success KnowledgeFragment are fixed and persisted/correlated.
+8. The system applies the approved minimum D20 contract and persists natural roll, modifier, total, DC, and binary outcome.
+9. DC is fixed before the roll.
+10. On success, the Apply preview shows the exact recipient and exact player-visible claim.
+11. Successful Apply is authorized, atomic, idempotent/one-shot, and cannot duplicate `CharacterKnowledge` or history.
+12. Successful Apply creates/updates the recipient `CharacterKnowledge` to `Aware`, closes/correlates the resolution, and appends the significant `DomainEvent` in one transaction.
+13. After successful Apply, only the authorized player projection receives the player-visible claim; GM-only metadata remains absent.
+14. On failure, the GM can record/confirm a concrete adjudication of the pre-declared Risk and Close the resolution without a generic consequence editor.
+15. A failed resolution has an unambiguous terminal/closed state and meaningful retained history.
+16. The same approach under materially unchanged fiction cannot simply be rerolled; the UI/rules do not present failure as retry-until-success.
+17. Cross-campaign reads, mutations, assignments, or embedded object references are rejected.
+18. Transaction rollback cannot leave `CharacterKnowledge`, resolution state, and history mutually inconsistent.
+19. A full reload reconstructs the persisted resolution, its pre-bound success effect, final outcome, and disclosure state without transient client state.
+20. Immediate success mutation uses direct in-process orchestration; `DomainEvent` is not internal command/RPC routing.
+21. Human-readable history does not become a second mutable source of truth.
+22. Slice 1 correctness does not depend on an outbox worker, broker, WebSocket service, generic Rule Effect DSL, generic workflow engine, or generic undo system.
 
 ## Explicitly out of scope for Slice 1
 
@@ -1752,97 +2003,245 @@ This is the minimum useful validation of the product architecture and gameplay-a
 - combat and initiative;
 - range bands;
 - health/wounds;
-- conditions beyond any strictly necessary technical test fixture;
-- inventory/resource economy unless Game Design proves the selected skill cannot exist without it;
+- inventory/resource economy unless the approved single modifier cannot be represented without it;
 - secondary narrative result die;
 - criticals and degree-of-success rules;
 - opposed checks;
+- final advantage/disadvantage rules;
+- global difficulty ladder;
 - tactical maps/tokens;
 - vehicles/space combat;
 - progression;
 - Force mechanics;
 - Dark Side mechanics;
+- advanced knowledge states;
 - knowledge provenance;
-- misinformation workflow beyond the accepted data model;
+- misinformation workflows;
 - information hazards;
 - story-thread management;
 - faction clocks/campaign pulse;
 - contextual generation;
-- live realtime push/WebSockets;
+- realtime push/WebSockets;
 - private messaging;
 - generic undo;
-- archive/delete lifecycle;
+- archive/delete implementation;
+- generic consequence editor/framework;
 - generic Rule Effect DSL;
-- outbox worker;
+- outbox worker/broker;
 - extension/package lifecycle;
-- pack-author tooling.
+- pack-author tooling;
+- Kubernetes/distributed production orchestration for this slice.
 
 ---
 
-# Review assignments
+# Post-review disposition
 
-## Game Design review required
+## Game Design
 
-Game Design should review or amend:
+**Disposition after consolidation:** no remaining specialist blocker identified in the submitted review, provided the four requested clarifications are incorporated.
 
-- K-04 Core gameplay loop;
-- K-05 GM authority;
-- K-06 Action resolution / stakes;
-- K-07 Minimum D20 contract;
-- K-08 Consequence classes;
-- K-09 Confirmation boundary;
-- K-12 minimum knowledge semantics;
-- K-17 combat sequencing;
-- K-18 tactical-map assumption;
-- K-19 vehicle/space-combat deferral;
-- the Slice 1 check, stakes, success/failure semantics, and whether the knowledge reveal is a valid deterministic effect.
+Incorporated:
 
-## UX review required
+- minimum when-to-roll rule;
+- concrete failure + retry semantics;
+- `Aware` as the only Slice 1 epistemic state;
+- exact success reveal bound before Roll.
 
-UX should review or amend:
+## UX
 
-- K-04 core gameplay loop interaction cost;
-- K-09 preview/Apply flow;
-- K-10 preparation/live workflow;
-- K-11 minimum player experience;
-- K-12 knowledge reveal;
-- K-13 Session deferral;
-- K-14 Scene deferral;
-- K-15 search sequencing;
-- K-20 correction requirement;
-- K-21 archive/delete lifecycle;
-- Slice 1 GM steps, player read flow, and whether manual refresh is acceptable.
+**Disposition after consolidation:** no remaining specialist blocker identified in the submitted review, provided failure Close and the pre-roll/Apply disclosure contract are incorporated.
 
-## Architecture review required
+Incorporated:
 
-Architecture should review or amend:
+- explicit terminal failure interaction;
+- exact pre-roll success binding and exact disclosure preview;
+- compact non-wizard live flow with prefilling;
+- manual refresh marked as Slice 1 concession only.
 
-- K-06 ActionResolution representation boundary;
-- K-09 transactional commit behavior;
-- K-11 membership/character assignment/projection contracts;
-- K-12 knowledge reveal persistence and projection;
-- K-13 Session deferral;
-- K-14 Scene deferral;
-- K-15 search sequencing assumptions;
-- K-20 correction/history semantics;
-- K-21 lifecycle semantics;
-- K-22 minimum architecture contracts;
-- Slice 1 persistence, transaction, API, DomainEvent, and authorization design.
+## Architecture
 
-## Human Project Owner arbitration expected
+**Disposition after consolidation:** no remaining specialist blocker identified in the submitted review, provided the requested contract clarifications are incorporated.
 
-The Human Project Owner should ultimately accept/reject:
+Incorporated:
 
-- K-01 Product vision;
-- K-03 MVP definition;
-- K-05 formalization of GM authority after specialist review;
-- K-16 procedural generation as MVP but post-Slice-1;
-- K-17 personal-scale combat as later MVP;
-- K-18 tactical maps post-MVP;
-- K-19 vehicle/space combat post-MVP;
-- K-23 exact first vertical slice;
-- K-24 explicit MVP exclusions;
-- any cross-domain point where specialist reviews remain materially incompatible.
+- server-derived authenticated principals;
+- authorization stronger than `campaign_id`;
+- cross-campaign reference validation;
+- persisted pre-roll success binding;
+- explicit Roll/Resolve and Apply/Close transaction boundaries;
+- idempotent Apply;
+- direct in-process orchestration rather than DomainEvent RPC;
+- history as projection, not mutable duplicate truth;
+- failure terminal close;
+- expanded integration-test/security contract.
+
+---
+
+# Human Arbitration Pack
+
+Only the following decisions still require Human Project Owner action **before Slice 1 implementation**.
+
+Broader MVP breadth can reasonably be deferred until after Slice 1; if deferred, it remains a Product recommendation rather than an implementation commitment.
+
+## K-05 — Formalize GM final narrative authority
+
+### QUESTION
+
+Should D-004 be formalized as:
+
+> The GM retains final authority over interpretive and authoritative narrative/canonical changes; bounded deterministic effects may be mechanically derived and committed under an accepted policy.
+
+### WHY NOW
+
+The Slice 1 success/failure commit semantics depend on a stable authority boundary. D-004 is currently only "To formalize".
+
+### OPTION A — Formalize the consolidated rule
+
+**Description:** adopt the wording above.
+
+**Advantages:**
+
+- matches Product, Game Design, UX, and Architecture;
+- preserves deterministic assistance;
+- prevents mechanical outcome from silently becoming narrative truth;
+- gives future automation a clear boundary.
+
+**Inconvénients:**
+
+- later automation must continue respecting the deterministic/interpretive distinction.
+
+### OPTION B — Keep D-004 unresolved
+
+**Description:** do not formalize GM authority yet.
+
+**Advantages:**
+
+- preserves theoretical flexibility.
+
+**Inconvénients:**
+
+- leaves consequence authority ambiguous;
+- keeps a kickoff implementation gate open;
+- invites inconsistent future automation behavior.
+
+### PRODUCT VIEW
+
+Option A.
+
+### GAME DESIGN VIEW
+
+Option A is explicitly approved.
+
+### UX VIEW
+
+Consistent with explicit Apply/Close and prevention of irreversible accidental disclosure.
+
+### ARCHITECTURE VIEW
+
+Consistent with bounded authorized transactional mutations and the distinction between derived effects and GM adjudication.
+
+### BLOCKING SLICE 1
+
+**YES**
+
+### DEFAULT IF DEFERRED
+
+Slice 1 remains blocked at the kickoff gate; no implementation should assume a narrative-authority policy that is not formally accepted.
+
+---
+
+## K-23 — Accept the consolidated first vertical slice
+
+### QUESTION
+
+Should Slice 1 be the consolidated non-combat **"Slice the terminal, reveal the secret"** scenario defined above?
+
+### WHY NOW
+
+The implementation gate requires the first vertical slice to be accepted before implementation planning begins.
+
+### OPTION A — Accept the consolidated terminal-slicing slice
+
+**Description:** implement the bounded end-to-end scenario defined in Phase 3.
+
+**Advantages:**
+
+- unanimously supported in direction by all three specialist reviews;
+- tests real GM/player play rather than CRUD only;
+- exercises D20, stakes, success/failure completion, permissions, persistence, knowledge, disclosure, transactions, history, and reload;
+- avoids combat, generation, Session/Scene, realtime, and generic infrastructure.
+
+**Inconvénients:**
+
+- deliberately does not test combat or procedural generation;
+- includes enough authentication/security work to validate two real principals.
+
+### OPTION B — Reduce to CRUD/persistence only
+
+**Description:** remove the D20/consequence/disclosure loop from Slice 1.
+
+**Advantages:**
+
+- smaller implementation.
+
+**Inconvénients:**
+
+- does not validate the fundamental gameplay-assistance loop;
+- does not exercise the most important projection/disclosure boundary;
+- all three specialist reviews preferred the gameplay slice.
+
+### OPTION C — Expand Slice 1 with combat or generation
+
+**Description:** add another major subsystem now.
+
+**Advantages:**
+
+- tests more headline features immediately.
+
+**Inconvénients:**
+
+- imports unresolved Game Design/UX/Architecture questions;
+- materially increases scope and slows first end-to-end validation;
+- no specialist review recommends it.
+
+### PRODUCT VIEW
+
+Option A.
+
+### GAME DESIGN VIEW
+
+Approves the terminal-slicing scenario after the incorporated rules for when-to-roll, failure/retry, `Aware`, and pre-bound success effect.
+
+### UX VIEW
+
+Approves the scenario after explicit failure Close, compact prefilling, and exact pre-roll/Apply disclosure preview.
+
+### ARCHITECTURE VIEW
+
+Approves the scenario after principal-based authorization, persisted effect binding, atomic/idempotent Apply, terminal failure closure, and history/testability clarifications.
+
+### BLOCKING SLICE 1
+
+**YES**
+
+### DEFAULT IF DEFERRED
+
+No first slice is accepted, so implementation remains blocked by `docs/planning/PROJECT_KICKOFF.md`.
+
+---
+
+## Product decisions not requiring immediate Human arbitration
+
+The following remain important but **do not block Slice 1** and can be decided after the first slice if desired:
+
+- exact broader MVP boundary in K-03;
+- procedural generation as MVP vs post-MVP in K-16;
+- personal-scale combat later-MVP vs post-MVP in K-17;
+- final post-MVP status of tactical maps in K-18;
+- vehicle/space combat timing in K-19;
+- final explicit MVP exclusions in K-24.
+
+**Default if deferred:** none of these capabilities become an implementation commitment merely because they are recommended in this pack. The Accepted baseline plus the accepted Slice 1 remain the only immediate commitments.
 
 ---
 
@@ -1883,16 +2282,14 @@ The following do not need resolution to implement Slice 1 and should not block t
 
 # Kickoff exit criteria
 
-This kickoff is ready to transition to implementation planning when:
+The specialist-review portion of the kickoff is complete.
 
-1. the Human Project Owner has accepted the first vertical slice;
-2. Game Design has accepted the minimum resolution/stakes/D20 semantics required by that slice;
-3. the consequence classification and commit boundary are accepted;
-4. UX has accepted the minimum GM/player workflow for that slice;
-5. Architecture has accepted the minimum stack, authorization, persistence, transaction, and projection contracts required by that slice;
-6. GM narrative authority is formally resolved;
-7. any remaining Slice 1 blockers are either accepted or explicitly removed from scope;
-8. accepted decisions are transferred from this decision pack into the appropriate authoritative domain/planning documents;
-9. `docs/planning/current-slice.md` is updated only after the slice is accepted.
+The kickoff is ready to transition to implementation planning when:
+
+1. the Human Project Owner formalizes K-05 GM authority;
+2. the Human Project Owner accepts K-23 Slice 1;
+3. the resulting accepted decisions are transferred from this review artifact into the appropriate authoritative domain/planning documents;
+4. `docs/planning/current-slice.md` is updated to the accepted Slice 1;
+5. remaining non-blocking MVP recommendations are either explicitly accepted or retained as deferred/proposed without delaying Slice 1.
 
 Until then, this document remains a review artifact and does not authorize implementation.
