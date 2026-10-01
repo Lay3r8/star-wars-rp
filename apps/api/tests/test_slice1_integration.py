@@ -1,5 +1,7 @@
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+import uuid
+
+import pytest
+from sqlalchemy import event, func, select
 from fastapi.testclient import TestClient
 
 from star_wars_rp.application.resolutions import apply_success
@@ -14,7 +16,7 @@ from conftest import register_and_login
 
 def setup_campaign(gm: TestClient, player: TestClient, suffix: str, dc: int):
     player_info = register_and_login(player, f"player-{suffix}")
-    register_and_login(gm, f"gm-{suffix}")
+    gm_info = register_and_login(gm, f"gm-{suffix}")
 
     campaign = gm.post("/api/campaigns", json={"name": f"Campaign {suffix}"}).json()
     campaign_id = campaign["id"]
@@ -71,6 +73,7 @@ def setup_campaign(gm: TestClient, player: TestClient, suffix: str, dc: int):
         "fragment": fragment,
         "resolution": resolution.json(),
         "player": player_info,
+        "gm": gm_info,
     }
 
 
@@ -236,27 +239,25 @@ def test_apply_rolls_back_if_event_insert_fails():
         rolled = gm.post(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll")
         assert rolled.json()["outcome"] == "SUCCESS"
 
-        with SessionLocal() as db:
-            resolution = db.get(ActionResolution, resolution_id)
-            membership = db.scalar(
-                select(CampaignMembership).where(
-                    CampaignMembership.campaign_id == resolution.campaign_id,
-                    CampaignMembership.role == "GM",
-                )
-            )
-            # Remove membership so DomainEvent FK fails during the same commit.
-            # The resolution object remains in this transaction, so the service can reach commit.
-            db.delete(membership)
-            db.flush()
-            try:
-                apply_success(db, membership.principal_id, resolution.campaign_id, resolution.id)
-            except Exception:
+        def fail_domain_event_insert(_mapper, _connection, _target):
+            raise RuntimeError("forced DomainEvent insert failure")
+
+        event.listen(DomainEvent, "before_insert", fail_domain_event_insert)
+        try:
+            with SessionLocal() as db:
+                with pytest.raises(RuntimeError, match="forced DomainEvent"):
+                    apply_success(
+                        db,
+                        uuid.UUID(data["gm"]["id"]),
+                        uuid.UUID(campaign_id),
+                        uuid.UUID(resolution_id),
+                    )
                 db.rollback()
-            else:
-                raise AssertionError("Apply should have failed")
+        finally:
+            event.remove(DomainEvent, "before_insert", fail_domain_event_insert)
 
         with SessionLocal() as db:
-            resolution = db.get(ActionResolution, resolution_id)
+            resolution = db.get(ActionResolution, uuid.UUID(resolution_id))
             assert resolution.state == "SUCCESS_PENDING_APPLY"
             assert db.scalar(select(func.count()).select_from(CharacterKnowledge)) == 0
             assert db.scalar(select(func.count()).select_from(DomainEvent)) == 0
