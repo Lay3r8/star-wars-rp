@@ -44,13 +44,22 @@ type Props = {
   locations: Location[];
 };
 
-const emptyForm = {
+type ContactForm = {
+  name: string;
+  role: string;
+  locationId: string;
+  gmNote: string;
+  claimText: string;
+  gmVeracity: "TRUE" | "FALSE" | "UNKNOWN";
+};
+
+const emptyForm: ContactForm = {
   name: "",
   role: "",
   locationId: "",
   gmNote: "",
   claimText: "",
-  gmVeracity: "TRUE" as const,
+  gmVeracity: "TRUE",
 };
 
 export default function ContactWorkspace({ campaignId, locations }: Props) {

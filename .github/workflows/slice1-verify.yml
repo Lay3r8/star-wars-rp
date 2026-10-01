@@ -1,9 +1,10 @@
-name: Slice 1 verification
+name: Vertical slice verification
 
 on:
   push:
     branches:
       - ai/architecture/slice-1
+      - ai/architecture/slice-2-contact
   pull_request:
     branches:
       - main
@@ -105,7 +106,7 @@ jobs:
             sleep 1
           done
 
-      - name: Run Playwright Slice 1 flows
+      - name: Run Playwright vertical slice flows
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -128,7 +129,7 @@ jobs:
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context=slice1/e2e \
-            -f description="Playwright Slice 1 flows passed"
+            -f description="Playwright vertical slice flows passed"
 
       - name: Cleanup
         if: always()

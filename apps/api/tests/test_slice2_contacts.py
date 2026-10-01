@@ -202,6 +202,9 @@ def test_edit_replaces_fragment_without_rewriting_previously_revealed_knowledge(
         assert revealed.status_code == 200, revealed.text
         old_claim = revealed.json()["claim_text"]
 
+        with SessionLocal() as db:
+            old_fragment_id = db.get(Contact, uuid.UUID(contact_id)).prepared_fragment_id
+
         updated_payload = contact_payload(
             data["location"]["id"],
             role="Senior Imperial dock clerk",
@@ -231,7 +234,9 @@ def test_edit_replaces_fragment_without_rewriting_previously_revealed_knowledge(
                 select(CharacterKnowledge).where(CharacterKnowledge.campaign_id == uuid.UUID(campaign_id))
             ).all()
             assert len(knowledge) == 1
-            assert knowledge[0].fragment_id != updated.json()["prepared_information"].get("fragment_id")
+            assert knowledge[0].fragment_id == old_fragment_id
+            current_contact = db.get(Contact, uuid.UUID(contact_id))
+            assert current_contact.prepared_fragment_id != old_fragment_id
 
 
 def test_reveal_is_atomic_idempotent_and_does_not_use_action_resolution():
