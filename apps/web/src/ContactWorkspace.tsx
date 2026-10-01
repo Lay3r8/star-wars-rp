@@ -113,6 +113,18 @@ export default function ContactWorkspace({ campaignId, locations }: Props) {
     return () => window.clearTimeout(timer);
   }, [performSearch, query]);
 
+  useEffect(() => {
+    if (!selected) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelected(null);
+        setShowRevealPreview(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [selected]);
+
   async function openContact(contactId: string) {
     setSearchError(null);
     try {
