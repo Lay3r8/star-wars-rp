@@ -48,8 +48,8 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
   await gmPage.getByText("Slice 1 proof setup").click();
 
   const contacts = gmPage.getByRole("region", { name: "Contacts" });
-  await contacts.getByLabel("Name").fill("Nira Voss");
-  await contacts.getByLabel("Role").fill("Imperial dock clerk and discreet informant");
+  await contacts.getByLabel("Name", { exact: true }).fill("Nira Voss");
+  await contacts.getByLabel("Role", { exact: true }).fill("Imperial dock clerk and discreet informant");
   await contacts.getByLabel("GM note").fill("Keeps a low profile around customs officers.");
   await contacts.getByLabel("Information this Contact knows").fill(claim);
   await contacts.getByLabel("Truth status").selectOption("TRUE");
@@ -58,7 +58,7 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
 
   // Edit accepted canonical state.
   await gmPage.getByRole("region", { name: "Contact summary" }).getByRole("button", { name: "Edit" }).click();
-  await contacts.getByLabel("Role").fill("Senior Imperial dock clerk and discreet informant");
+  await contacts.getByLabel("Role", { exact: true }).fill("Senior Imperial dock clerk and discreet informant");
   await contacts.getByLabel("GM note").fill("Now watches customs traffic closely.");
   await contacts.getByRole("button", { name: "Save changes" }).click();
   await expect(contacts.getByText("Contact changes saved.")).toBeVisible();
