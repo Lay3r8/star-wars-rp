@@ -27,6 +27,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByLabel("New campaign").fill(`Campaign ${id}`);
   await gmPage.getByRole("button", { name: "Create as GM" }).click();
+  await gmPage.getByText("Slice 1 proof setup").click();
 
   await gmPage.getByLabel("Registered username").fill(playerName);
   await gmPage.getByRole("button", { name: "Add to campaign" }).click();
@@ -77,6 +78,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
 
   await page.getByLabel("New campaign").fill(`Failure ${id}`);
   await page.getByRole("button", { name: "Create as GM" }).click();
+  await page.getByText("Slice 1 proof setup").click();
   await page.getByLabel("Registered username").fill(playerName);
   await page.getByRole("button", { name: "Add to campaign" }).click();
   await expect(page.locator("ul.compact li", { hasText: playerName })).toBeVisible();
