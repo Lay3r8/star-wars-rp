@@ -30,7 +30,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByLabel("Registered username").fill(playerName);
   await gmPage.getByRole("button", { name: "Add to campaign" }).click();
-  await expect(gmPage.getByText(playerName, { exact: true })).toBeVisible();
+  await expect(gmPage.locator("ul.compact li", { hasText: playerName })).toBeVisible();
 
   await gmPage.getByLabel("Character name").fill("Kara Venn");
   await gmPage.getByRole("button", { name: "Create character" }).click();
@@ -79,7 +79,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await page.getByRole("button", { name: "Create as GM" }).click();
   await page.getByLabel("Registered username").fill(playerName);
   await page.getByRole("button", { name: "Add to campaign" }).click();
-  await expect(page.getByText(playerName, { exact: true })).toBeVisible();
+  await expect(page.locator("ul.compact li", { hasText: playerName })).toBeVisible();
   await page.getByLabel("Character name").fill("Kara Venn");
   await page.getByRole("button", { name: "Create character" }).click();
   await expect(page.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
