@@ -592,9 +592,9 @@ Verified stable baseline at implementation start (2026-10-01):
 
 Backend:
 
-- Python 3.14
+- Python 3.14.8
 - FastAPI 0.142.2
-- SQLAlchemy 2.0.54
+- SQLAlchemy 2.1.1
 - Alembic 1.20.0
 - Pydantic 2.13.5
 - psycopg 3.3.6
@@ -605,10 +605,13 @@ Backend:
 
 Frontend:
 
+- Node.js 24.21.0 LTS
+- PostgreSQL 18.6
 - React 19.3.0
 - Vite 8.3.1
 - TypeScript 7.0.2
 - @vitejs/plugin-react 6.1.1
+- @types/node 24.19.0
 - Playwright 1.63.0
 
 Exact compatibility is verified by build/tests on the slice branch; prereleases are excluded.

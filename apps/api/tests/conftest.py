@@ -1,11 +1,8 @@
 import os
 
-os.environ.setdefault(
-    "DATABASE_URL",
-    os.getenv(
-        "TEST_DATABASE_URL",
-        "postgresql+psycopg://starwars:starwars@localhost:5432/star_wars_rp_test",
-    ),
+os.environ["DATABASE_URL"] = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg://starwars:starwars@localhost:5432/star_wars_rp_test",
 )
 os.environ.setdefault("AUTH_SECRET", "test-secret-that-is-at-least-thirty-two-characters")
 

@@ -249,7 +249,7 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
           e.currentTarget.reset();
         }}>
           <h3>2. Create Character</h3>
-          <label>Name<input name="name" required /></label>
+          <label>Character name<input name="name" required /></label>
           <label>Slicing modifier<input name="modifier" type="number" defaultValue="2" min="-20" max="20" required /></label>
           <button>Create character</button>
         </form>
@@ -261,7 +261,7 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
           e.currentTarget.reset();
         }}>
           <h3>3. Create Location</h3>
-          <label>Name<input name="name" defaultValue="Imperial Cargo Terminal" required /></label>
+          <label>Location name<input name="name" defaultValue="Imperial Cargo Terminal" required /></label>
           <button>Create location</button>
         </form>
 

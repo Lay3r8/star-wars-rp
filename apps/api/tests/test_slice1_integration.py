@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from star_wars_rp.application.resolutions import apply_success
 from star_wars_rp.db import SessionLocal
-from star_wars_rp.modules.campaigns.models import CampaignMembership
+from star_wars_rp.modules.campaigns.models import CampaignMembership, PlayerCharacterAssignment
 from star_wars_rp.modules.history.models import DomainEvent
 from star_wars_rp.modules.knowledge.models import CharacterKnowledge
 from star_wars_rp.modules.resolutions.models import ActionResolution
@@ -91,16 +91,31 @@ def test_success_reveal_is_authorized_atomic_and_idempotent():
         assert "gm_veracity" not in before.text
         assert data["fragment"]["claim_text"] not in before.text
 
-        player_roll = player.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll"
-        )
-        assert player_roll.status_code == 403
+        for command, body in [
+            ("roll", None),
+            ("apply", None),
+            ("close-failure", {"adjudication": "Not allowed"}),
+        ]:
+            response = player.post(
+                f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/{command}",
+                json=body,
+            ) if body is not None else player.post(
+                f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/{command}"
+            )
+            assert response.status_code == 403
 
         rolled = gm.post(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll")
         assert rolled.status_code == 200, rolled.text
         assert rolled.json()["outcome"] == "SUCCESS"
         assert rolled.json()["success_preview"]["fragment_id"] == data["fragment"]["id"]
         assert rolled.json()["success_preview"]["recipient_character_id"] == data["character"]["id"]
+        assert gm.post(
+            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll"
+        ).status_code == 409
+        assert gm.post(
+            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/close-failure",
+            json={"adjudication": "Wrong branch"},
+        ).status_code == 409
 
         first_apply = gm.post(
             f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/apply"
@@ -207,6 +222,15 @@ def test_cross_campaign_access_and_embedded_references_are_rejected():
             },
         )
 
+        cross_assignment = gm.put(
+            f"/api/campaigns/{first['campaign']['id']}/player-assignment",
+            json={
+                "player_principal_id": first["player"]["id"],
+                "character_id": second_character["id"],
+            },
+        )
+        assert cross_assignment.status_code == 404
+
         response = gm.post(
             f"/api/campaigns/{second_id}/resolutions",
             json={
@@ -261,3 +285,48 @@ def test_apply_rolls_back_if_event_insert_fails():
             assert resolution.state == "SUCCESS_PENDING_APPLY"
             assert db.scalar(select(func.count()).select_from(CharacterKnowledge)) == 0
             assert db.scalar(select(func.count()).select_from(DomainEvent)) == 0
+
+
+def test_role_authorization_is_reloaded_from_database():
+    with TestClient(__import__("star_wars_rp.main", fromlist=["app"]).app) as gm:
+        gm_info = register_and_login(gm, "role-change-gm")
+        campaign = gm.post("/api/campaigns", json={"name": "Role source"}).json()
+        campaign_id = uuid.UUID(campaign["id"])
+
+        with SessionLocal() as db:
+            membership = db.get(
+                CampaignMembership,
+                {
+                    "campaign_id": campaign_id,
+                    "principal_id": uuid.UUID(gm_info["id"]),
+                },
+            )
+            membership.role = "PLAYER"
+            db.commit()
+
+        response = gm.post(
+            f"/api/campaigns/{campaign_id}/characters",
+            json={"name": "Must fail", "slicing_modifier": 1},
+        )
+        assert response.status_code == 403
+
+
+def test_assignment_is_server_authoritative():
+    with TestClient(__import__("star_wars_rp.main", fromlist=["app"]).app) as gm, TestClient(
+        __import__("star_wars_rp.main", fromlist=["app"]).app
+    ) as player:
+        data = setup_campaign(gm, player, "assignment", dc=1)
+        campaign_id = uuid.UUID(data["campaign"]["id"])
+        player_id = uuid.UUID(data["player"]["id"])
+
+        with SessionLocal() as db:
+            assignment = db.get(
+                PlayerCharacterAssignment,
+                {"campaign_id": campaign_id, "player_principal_id": player_id},
+            )
+            assert assignment is not None
+            assert assignment.character_id == uuid.UUID(data["character"]["id"])
+
+        projection = player.get(f"/api/player/campaigns/{campaign_id}/character")
+        assert projection.status_code == 200
+        assert projection.json()["character"]["id"] == data["character"]["id"]

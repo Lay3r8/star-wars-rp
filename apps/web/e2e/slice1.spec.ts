@@ -30,11 +30,15 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByLabel("Registered username").fill(playerName);
   await gmPage.getByRole("button", { name: "Add to campaign" }).click();
+  await expect(gmPage.getByText(playerName, { exact: true })).toBeVisible();
 
-  await gmPage.getByLabel("Name").first().fill("Kara Venn");
+  await gmPage.getByLabel("Character name").fill("Kara Venn");
   await gmPage.getByRole("button", { name: "Create character" }).click();
+  await expect(gmPage.getByRole("option", { name: "Kara Venn" })).toBeVisible();
   await gmPage.getByRole("button", { name: "Create location" }).click();
+  await expect(gmPage.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await gmPage.getByRole("button", { name: "Create secret" }).click();
+  await expect(gmPage.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
 
   await gmPage.getByRole("button", { name: "Assign" }).click();
 
@@ -69,10 +73,14 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await page.getByRole("button", { name: "Create as GM" }).click();
   await page.getByLabel("Registered username").fill(playerName);
   await page.getByRole("button", { name: "Add to campaign" }).click();
-  await page.getByLabel("Name").first().fill("Kara Venn");
+  await expect(page.getByText(playerName, { exact: true })).toBeVisible();
+  await page.getByLabel("Character name").fill("Kara Venn");
   await page.getByRole("button", { name: "Create character" }).click();
+  await expect(page.getByRole("option", { name: "Kara Venn" })).toBeVisible();
   await page.getByRole("button", { name: "Create location" }).click();
+  await expect(page.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create secret" }).click();
+  await expect(page.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Assign" }).click();
 
   await page.getByLabel("DC").fill("100");
