@@ -1,14 +1,14 @@
-# Slice 3 Final Proposed Specification — Roll, Review and Adjudicate
+# Slice 3 Specification — Roll, Review and Adjudicate
 
-**Status:** PROPOSED — READY FOR HUMAN ACCEPTANCE  
+**Status:** ACCEPTED  
 **Owner:** Product Lead  
 **Selection source:** `docs/planning/slice-3-candidates.md`  
-**Implementation authorization:** NO  
-**Current-slice impact:** NONE until Human acceptance
+**Implementation authorization:** YES after merge of this PR  
+**Accepted:** 2026-10-02
 
-This specification consolidates the completed Game Design, UX and Architecture reviews of PR #15.
+This specification consolidates the completed Game Design, UX and Architecture reviews of PR #15 and was explicitly accepted by the Human Project Owner on 2026-10-02.
 
-It is final at Product level, but Slice 3 is **not ACCEPTED** until the Human Project Owner explicitly approves it.
+After this PR is merged to `main`, this document is the normative Slice 3 contract and implementation may begin on a separate Architecture branch.
 
 ---
 
@@ -1486,25 +1486,19 @@ No generic replacement.
 
 **NO MATERIAL HUMAN ARBITRATION REMAINS**
 
-The three specialist reviews now converge on one bounded implementation contract.
-
-The remaining step is not domain arbitration but Human acceptance of the final proposed Slice 3 scope.
+The Human Project Owner accepted the consolidated specification on 2026-10-02.
 
 ---
 
-# 25. Acceptance gate
+# 25. Implementation gate
 
-This specification is:
+**Slice 3 is ACCEPTED.**
 
-**READY FOR HUMAN ACCEPTANCE**
+Implementation remains blocked only until this normative PR is merged to `main`.
 
-It is not yet ACCEPTED.
+After merge:
 
-Until the Human Project Owner explicitly approves:
-
-- do not modify `docs/planning/current-slice.md`;
-- do not add an ACCEPTED Slice 3 decision to `decision-log.md`;
-- do not start implementation;
-- do not merge PR #15 as implementation authorization.
-
-After explicit Human acceptance, Product may update the normative planning state and authorize the Architecture implementation phase through the normal branch/PR workflow.
+- `docs/planning/current-slice.md` identifies Slice 3 as the current accepted slice;
+- `docs/planning/decision-log.md` records D-007 as ACCEPTED;
+- implementation may begin on a separate short-lived Architecture branch;
+- the explicit exclusions in this specification remain binding.
