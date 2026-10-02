@@ -42,7 +42,12 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
 
   await gmPage.getByLabel("Location name").fill("Dock 47");
   await gmPage.getByRole("button", { name: "Create location" }).click();
-  await expect(gmPage.locator("details.legacy-setup").getByText("Dock 47", { exact: true })).toBeVisible();
+  await expect(
+    gmPage
+      .getByRole("region", { name: "Contacts" })
+      .getByLabel("Location")
+      .locator("option"),
+  ).toContainText(["Dock 47"]);
 
   await gmPage.getByRole("button", { name: "Assign" }).click();
   await gmPage.getByText("Slice 1 proof setup").click();
