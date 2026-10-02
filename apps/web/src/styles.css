@@ -118,3 +118,31 @@ legend { color: #b9c5d5; padding: 0 .35rem; }
 @media (max-width: 800px) {
   .contact-columns { grid-template-columns: 1fr; }
 }
+
+.resolution-workspace { margin-top: 1rem; }
+.status-pill {
+  display: inline-block;
+  border: 1px solid #52647c;
+  border-radius: 999px;
+  padding: .3rem .65rem;
+  color: #c8d5e6;
+  font-size: .85rem;
+}
+.mechanical-evidence,
+.adjudication-box,
+.exception-box,
+.warning-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #334257;
+  border-radius: 10px;
+  background: #111822;
+}
+.exception-box { border-style: dashed; }
+.warning-box {
+  border-color: #a37b47;
+  background: #2a2117;
+}
+.warning-box p { margin-bottom: .5rem; }
+.adjudication-box h4,
+.exception-box h4 { margin-top: 0; }
