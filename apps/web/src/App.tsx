@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "./api";
+import ContactWorkspace from "./ContactWorkspace";
 
 type Principal = { id: string; username: string };
 type Campaign = { id: string; name: string; role: "GM" | "PLAYER" };
@@ -228,6 +229,11 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
       </div>
       <ErrorBox error={error} />
 
+      <ContactWorkspace campaignId={campaign.id} locations={locations} />
+
+      <details className="legacy-setup">
+        <summary>Slice 1 proof setup</summary>
+        <div className="legacy-setup-body">
       <div className="grid">
         <form className="panel" onSubmit={(e) => {
           e.preventDefault();
@@ -369,6 +375,8 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
           <ul>{history.map((item) => <li key={item.id}>{item.message}</li>)}</ul>
         )}
       </section>
+        </div>
+      </details>
     </section>
   );
 }
@@ -409,7 +417,7 @@ export default function App() {
   return (
     <main className="app-shell">
       <header>
-        <div><p className="eyebrow">Star Wars RP</p><h1>Slice 1</h1></div>
+        <div><p className="eyebrow">Star Wars RP</p><h1>Campaign workspace</h1></div>
         <div className="header-actions"><span>{principal.username}</span><button onClick={() => void logout()}>Logout</button></div>
       </header>
 
