@@ -1,107 +1,146 @@
 # Current Vertical Slice
 
-## Slice 2 — Prep a Contact, Find Them Instantly, Use Them in Play
+## Slice 3 — Roll, Review and Adjudicate
 
 **Status:** ACCEPTED  
-**Accepted:** 2026-10-01  
+**Accepted:** 2026-10-02  
 **Owner:** Product Lead / Human Project Owner  
-**Specification:** `docs/planning/slice-2-spec.md`
+**Specification:** `docs/planning/slice-3-spec.md`
 
 ## Goal
 
-Validate that the application can support a durable GM preparation-to-live-play workflow:
+Validate a bounded GM-authoritative D20 resolution workflow that explicitly separates:
 
-```text
-prepare Contact
--> edit if needed
--> find quickly during live play
--> open compact summary
--> reveal one prepared piece of information
--> persist safe Player disclosure
-```
+1. immutable raw roll;
+2. immutable mechanical result;
+3. final GM adjudicated outcome;
+4. later correction/supersession without rewriting mechanical evidence or pretending irreversible human disclosure can be undone.
 
 ## Accepted scenario
 
-The GM prepares Nira Voss before the session with:
+Slice 3 reuses the existing Slice-1 slicing scenario.
 
-- name;
-- short role;
-- existing Location;
-- optional GM note;
-- one prepared information item;
-- explicit Truth status: `TRUE`, `FALSE`, or `UNKNOWN`.
+Kara Venn attempts to slice the Imperial Cargo Terminal to discover where a confiscated shipment was transferred.
 
-During live play the GM searches the current campaign for Nira, opens a compact summary, previews the exact recipient Character and exact claim, and explicitly Reveals that claim.
+The bounded workflow is:
 
-No social roll is required in the acceptance path because the GM has established that Nira provides the information.
+```text
+Intent + Risk + slicing mechanic + DC + pre-bound success effect
+-> Roll
+-> immutable RAW ROLL
+-> immutable MECHANICAL RESULT
+-> GM adjudication
+-> Finalize
+-> bounded consequence commit
+-> optional later Correct outcome
+-> superseding adjudication + append-only history
+```
 
-## Required Slice 2 contracts
+The success consequence remains:
 
-- GM and Player remain distinct authenticated principals.
-- Contact reuses Character identity plus a narrow typed Contact profile/state.
-- Contact preparation authors the one information item inline.
-- Contact creation atomically persists Contact state + KnowledgeFragment association.
-- Replacing prepared information creates a new KnowledgeFragment and does not rewrite previously revealed CharacterKnowledge.
-- Search is GM-only, current-campaign only, Contacts-only.
-- Search fields: Contact name + role.
-- Matching: case-insensitive partial text.
-- Ordering: name matches before role-only matches, then deterministic name/id ordering.
-- 0/1/many result behavior and minimum keyboard interaction follow the accepted UX contract.
-- Compact summary shows name, role, Location, prepared information, and direct Reveal; GM note is secondary.
-- Reveal bypasses Slice-1-specific ActionResolution persistence.
-- Reveal is backend-authorized, synchronous, atomic and idempotent.
-- After Reveal, `CharacterKnowledge = AWARE` and the Player projection contains the exact claim.
-- GM note and `gm_veracity` remain hidden from Player.
-- Player-visible source provenance is deferred.
-- PostgreSQL remains the only required search/persistence technology.
+> Kara becomes AWARE of the pre-bound KnowledgeFragment:
+> "The confiscated shipment was transferred to Dock 47."
+
+The failure path remains one concrete GM-authored failure adjudication string; the predeclared Risk may be used unchanged when it is already sufficient.
+
+## Required Slice 3 contracts
+
+- raw d20 is generated exactly once by the backend and is immutable through normal Product commands;
+- resolved modifier, total, DC and mechanical result are immutable after Roll;
+- mechanical result remains binary SUCCESS/FAILURE for this slice;
+- final adjudicated outcome is separate from mechanical result;
+- Override is the exceptional case where final outcome differs from mechanical result;
+- Override is allowed in both binary directions;
+- override reason is optional;
+- common path uses one Finalize action after review;
+- final SUCCESS applies only the existing pre-bound CharacterKnowledge effect;
+- final FAILURE persists a concrete failure adjudication and does not apply the success effect;
+- Risk may directly supply the failure adjudication when sufficient;
+- Correct outcome creates a new adjudication that supersedes the prior one;
+- correction reason is required;
+- correction never rewrites raw/mechanical evidence;
+- FAILURE -> SUCCESS correction may add the pre-bound knowledge disclosure;
+- SUCCESS -> FAILURE after disclosure retains CharacterKnowledge = AWARE and preserves disclosure history;
+- existing Slice-1-specific ActionResolution is evolved narrowly rather than replaced;
+- current adjudication stays in PostgreSQL relational state;
+- prior adjudications remain in append-only DomainEvent history;
+- Player receives a bounded finalized-resolution projection containing raw d20, modifier, total, mechanical result, final outcome, overridden marker and corrected marker;
+- Player does not receive DC, GM reasons, failure-adjudication text, GM-only Risk/stakes, gm_veracity, or full correction history;
+- Finalize and Correct remain synchronous, row-locked and backend-authorized;
+- campaign isolation remains strict.
+
+## Required API direction
+
+Keep:
+
+```text
+POST /campaigns/{campaign_id}/resolutions
+POST /campaigns/{campaign_id}/resolutions/{resolution_id}/roll
+GET  /campaigns/{campaign_id}/resolutions/{resolution_id}
+GET  /campaigns/{campaign_id}/resolutions/latest
+```
+
+Introduce:
+
+```text
+POST /campaigns/{campaign_id}/resolutions/{resolution_id}/finalize
+POST /campaigns/{campaign_id}/resolutions/{resolution_id}/correct
+```
+
+The old `/apply` and `/close-failure` terminal mutation semantics must not remain alternative paths around the accepted adjudication contract.
 
 ## Acceptance criteria
 
-The normative acceptance criteria and test expectations are defined in `docs/planning/slice-2-spec.md`.
+The normative acceptance criteria and test contract are defined in `docs/planning/slice-3-spec.md`.
 
-At minimum, implementation must demonstrate end-to-end:
+At minimum, implementation must prove end-to-end:
 
-```text
-pre-existing Location + GM + Player + assigned Character
--> GM creates Contact with inline information + Truth status
--> Save feedback
--> edit
--> reload
--> search
--> compact summary
--> preview recipient + exact claim
--> Reveal
--> Player receives exact claim
--> reload preserves Contact and disclosure state
-```
+- normal mechanical SUCCESS -> Finalize SUCCESS;
+- mechanical FAILURE -> Override -> Finalize SUCCESS;
+- mechanical SUCCESS -> Override -> Finalize FAILURE;
+- finalized FAILURE -> Correct -> SUCCESS;
+- finalized SUCCESS -> Correct -> FAILURE after disclosure while retaining CharacterKnowledge;
+- immutable mechanical evidence across Finalize/Correct;
+- append-only finalization/correction history;
+- GM-only mutations;
+- Player-safe finalized-resolution projection;
+- reload persistence;
+- idempotency/concurrency behavior;
+- migration from legacy Slice-1 ActionResolution rows;
+- Slice 2 Contact Reveal remains independent of ActionResolution.
 
-## Explicit Slice 2 exclusions
+## Explicit Slice 3 exclusions
 
-- complete campaign CMS;
-- generic entity editor;
-- full NPC system;
-- relationship/disposition/reputation systems;
-- social combat;
-- combat/encounters;
-- Scene/Session;
-- procedural generation;
-- Player Contact search/directory;
-- Principal/account search;
-- multi-entity global search;
-- realtime/WebSockets/SSE;
-- Elasticsearch/OpenSearch;
-- pg_trgm/full-text search for this slice;
-- generic ActionResolution engine;
+- generic resolution engine;
+- generic Resolution aggregate for hypothetical mechanics;
+- generic Adjudication aggregate/table;
+- generic workflow/state-machine framework;
+- generic undo/change-set framework;
+- arbitrary rollback;
+- generic compensation framework;
+- generic consequence/effect engine;
 - Rule Effect DSL;
-- outbox worker/broker;
+- event sourcing;
+- combat/encounter system;
+- Player-side rolling;
+- collaborative/group actions;
+- realtime/WebSockets/SSE;
+- rerolls;
+- crits;
+- degrees of success;
+- opposed rolls;
+- advantage/disadvantage expansion;
+- mechanical repair UI;
+- full Player resolution-history browser;
+- Player-visible DC;
+- Player-visible GM reasons;
+- generic Scene/Session;
+- broker/worker;
 - microservices;
-- plugin runtime;
-- generic undo/archive/delete;
-- Player-visible source provenance;
-- i18n implementation.
+- a second D20 mechanic introduced only for generality.
 
 ## Deferred questions
 
-Deferred items remain non-normative and must not be inferred as accepted requirements from this slice.
+Only genuinely deferred questions remain in `docs/planning/open-questions.md`.
 
-See `docs/planning/open-questions.md`.
+Deferred items are non-normative and must not be inferred as accepted Slice 3 requirements.
