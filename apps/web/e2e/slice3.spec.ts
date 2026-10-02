@@ -65,7 +65,7 @@ test("normal mechanical success finalizes and becomes Player-visible", async ({ 
   const scenario = await prepareScenario(browser, "normal", "1");
   try {
     const current = scenario.gmPage.getByRole("region", { name: "Current resolution" });
-    await expect(current.getByText(/Mechanical result:/)).toContainText("SUCCESS");
+    await expect(current.locator(".mechanical-evidence")).toContainText("Mechanical result: SUCCESS");
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toHaveCount(0);
 
     await current.getByRole("button", { name: "Finalize Success" }).click();
@@ -84,7 +84,7 @@ test("mechanical failure can be overridden to final success", async ({ browser }
   const scenario = await prepareScenario(browser, "override-fs", "100");
   try {
     const current = scenario.gmPage.getByRole("region", { name: "Current resolution" });
-    await expect(current.getByText(/Mechanical result:/)).toContainText("FAILURE");
+    await expect(current.locator(".mechanical-evidence")).toContainText("Mechanical result: FAILURE");
     await current.getByRole("button", { name: "Override outcome…" }).click();
     await current.getByLabel(/Override reason/).fill("Cached records remain readable.");
     await current.getByRole("button", { name: "Finalize as Success" }).click();

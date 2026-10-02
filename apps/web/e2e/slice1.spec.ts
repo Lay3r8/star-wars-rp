@@ -52,7 +52,7 @@ test("success roll waits for GM Finalize before disclosure", async ({ browser })
 
   await gmPage.getByRole("button", { name: "Roll" }).click();
   const current = gmPage.getByRole("region", { name: "Current resolution" });
-  await expect(current.getByText(/Mechanical result:/)).toContainText("SUCCESS");
+  await expect(current.locator(".mechanical-evidence")).toContainText("Mechanical result: SUCCESS");
   await expect(current.getByRole("button", { name: "Finalize Success" })).toBeVisible();
 
   await playerPage.getByLabel("Username").fill(playerName);
@@ -82,7 +82,7 @@ test("failure finalizes with the declared Risk as concrete consequence", async (
 
   await page.getByRole("button", { name: "Roll" }).click();
   const current = page.getByRole("region", { name: "Current resolution" });
-  await expect(current.getByText(/Mechanical result:/)).toContainText("FAILURE");
+  await expect(current.locator(".mechanical-evidence")).toContainText("Mechanical result: FAILURE");
   await current.getByRole("button", { name: "Finalize Failure" }).click();
   await expect(current).toContainText("Final outcome: FAILURE");
   await expect(current).toContainText("On failure, Imperial security notices the intrusion.");
