@@ -54,6 +54,146 @@ The Player should eventually be able to:
 - browse/filter it efficiently;
 - group or sort it by quest/thread when that domain exists.
 
+## Character/NPC knowledge should be 0..N, not a single field
+
+The Slice 2 field **"Information this Contact knows"** is a deliberately narrow proof surface.
+
+It must not become the long-term Character/NPC knowledge model.
+
+A Character, Contact or NPC should eventually be able to have:
+
+```text
+0..N CharacterKnowledge entries
+```
+
+This means:
+
+- a newly created NPC may know nothing explicitly modeled;
+- another NPC may know one prepared claim;
+- an important recurring NPC may accumulate many claims over time;
+- Player Characters and NPCs should ultimately use the same epistemic model where appropriate.
+
+A Contact is therefore not defined by "having one information field".
+
+The prepared information field in Slice 2 is only one authoring shortcut for one vertical slice.
+
+### Acquisition metadata should be optional and attached to knowledge acquisition
+
+A CharacterKnowledge relationship may eventually carry or reference optional acquisition metadata such as:
+
+- where the Character learned the information;
+- when it was learned;
+- source/origin type;
+- source entity when known;
+- acquisition method;
+- related resolution or roll;
+- degree of confidence / epistemic state when Game Design defines it.
+
+Conceptually:
+
+```text
+KnowledgeFragment
+  claim / proposition
+  GM veracity
+
+CharacterKnowledge
+  character
+  fragment
+  epistemic state
+  optional acquisition/provenance metadata
+```
+
+The exact data model remains Architecture-owned.
+
+### Provenance must be optional
+
+Not every known fact needs an explainable parent/source chain.
+
+A GM must be able to author:
+
+> "This NPC knows X."
+
+without explaining why.
+
+That is especially important for manually authored campaign content, where forcing provenance would create bookkeeping with little gameplay value.
+
+Therefore a future provenance model should support knowledge with no recorded source as a valid first-class case.
+
+### Procedurally generated characters may benefit from richer provenance chains
+
+For procedurally generated content, provenance can create meaningful internal coherence.
+
+Example:
+
+```text
+Imperial manifest
+-> dock clerk reads manifest
+-> dock clerk tells smuggler
+-> smuggler tells Player Character
+```
+
+Such a chain could later support:
+
+- source credibility;
+- contradictory rumours;
+- traceable misinformation;
+- procedural investigation hooks;
+- questions such as "who could plausibly know this?".
+
+This should remain optional structure, not a requirement that every generated fact form a complete causal graph.
+
+### Product principle
+
+The durable direction is:
+
+> Knowledge can be richly sourced when that creates gameplay value, but unexplained GM-authored knowledge remains valid.
+
+Do not force provenance merely because the architecture can represent it.
+
+## GAME DESIGN IMPACT
+
+Game Design must eventually define:
+
+- whether provenance affects belief/confidence;
+- whether confidence is an epistemic state, metadata, or both;
+- how contradictory sources affect CharacterKnowledge;
+- whether procedurally generated provenance has mechanical effects.
+
+## UX IMPACT
+
+Authoring must support both:
+
+- fast path: "NPC knows this";
+- richer path: add source/location/time/acquisition metadata when useful.
+
+The fast path should remain the default unless the selected workflow benefits from provenance.
+
+## ARCHITECTURE IMPACT
+
+The accepted ADR already supports 0..N knowledge naturally through CharacterKnowledge.
+
+Future work should avoid:
+
+- a single `known_information` string on Character/Contact;
+- mandatory provenance foreign keys;
+- copying source metadata into KnowledgeFragment truth data.
+
+If provenance becomes necessary, prefer optional acquisition/provenance structures associated with CharacterKnowledge or an acquisition event.
+
+## SECURITY IMPACT
+
+Provenance itself may contain hidden information.
+
+Player projections must independently authorize:
+
+- the claim;
+- the source;
+- the Location;
+- acquisition metadata.
+
+Disclosure of a claim does not automatically authorize disclosure of its full provenance.
+
+---
 ## Important semantic distinction
 
 Acquisition metadata is **not** the same thing as truth.
