@@ -62,7 +62,7 @@ test("success roll waits for GM Finalize before disclosure", async ({ browser })
   await expect(playerPage.getByRole("region", { name: "Latest finalized resolution" })).toHaveCount(0);
 
   await current.getByRole("button", { name: "Finalize Success" }).click();
-  await playerPage.reload();
+  await playerPage.getByRole("button", { name: "Refresh" }).click();
   await expect(playerPage.getByText("The confiscated shipment was transferred to Dock 47.")).toBeVisible();
   await expect(playerPage.getByRole("region", { name: "Latest finalized resolution" })).toContainText("Final outcome: SUCCESS");
 

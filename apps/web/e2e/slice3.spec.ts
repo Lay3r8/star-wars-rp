@@ -69,7 +69,7 @@ test("normal mechanical success finalizes and becomes Player-visible", async ({ 
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toHaveCount(0);
 
     await current.getByRole("button", { name: "Finalize Success" }).click();
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
 
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
     const summary = scenario.playerPage.getByRole("region", { name: "Latest finalized resolution" });
@@ -89,7 +89,7 @@ test("mechanical failure can be overridden to final success", async ({ browser }
     await current.getByLabel(/Override reason/).fill("Cached records remain readable.");
     await current.getByRole("button", { name: "Finalize as Success" }).click();
 
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
     const summary = scenario.playerPage.getByRole("region", { name: "Latest finalized resolution" });
     await expect(summary).toContainText("Mechanical result: FAILURE");
@@ -107,7 +107,7 @@ test("mechanical success can be overridden to final failure", async ({ browser }
     await current.getByLabel(/Override reason/).fill("The access token was a decoy.");
     await current.getByRole("button", { name: "Finalize as Failure" }).click();
 
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toHaveCount(0);
     const summary = scenario.playerPage.getByRole("region", { name: "Latest finalized resolution" });
     await expect(summary).toContainText("Mechanical result: SUCCESS");
@@ -122,14 +122,14 @@ test("final failure can be corrected to success", async ({ browser }) => {
   try {
     const current = scenario.gmPage.getByRole("region", { name: "Current resolution" });
     await current.getByRole("button", { name: "Finalize Failure" }).click();
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toHaveCount(0);
 
     await current.getByRole("button", { name: "Correct outcome…" }).click();
     await current.getByLabel("Correction reason").fill("Reviewed the fiction after finalization.");
     await current.getByRole("button", { name: "Apply correction" }).click();
 
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
     const summary = scenario.playerPage.getByRole("region", { name: "Latest finalized resolution" });
     await expect(summary).toContainText("Final outcome: SUCCESS");
@@ -148,7 +148,7 @@ test("correcting success to failure retains irreversible disclosed knowledge", a
   try {
     const current = scenario.gmPage.getByRole("region", { name: "Current resolution" });
     await current.getByRole("button", { name: "Finalize Success" }).click();
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
 
     await current.getByRole("button", { name: "Correct outcome…" }).click();
@@ -156,7 +156,7 @@ test("correcting success to failure retains irreversible disclosed knowledge", a
     await current.getByLabel("Correction reason").fill("The adjudication was corrected after disclosure.");
     await current.getByRole("button", { name: "Apply correction" }).click();
 
-    await scenario.playerPage.reload();
+    await scenario.playerPage.getByRole("button", { name: "Refresh" }).click();
     await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
     const summary = scenario.playerPage.getByRole("region", { name: "Latest finalized resolution" });
     await expect(summary).toContainText("Mechanical result: SUCCESS");
