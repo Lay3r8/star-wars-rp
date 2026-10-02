@@ -13,16 +13,17 @@ from star_wars_rp.modules.campaigns.models import CampaignMembership, PlayerChar
 from star_wars_rp.modules.characters.models import Character
 from star_wars_rp.modules.custom_d20.models import CustomD20CharacterProfile
 from star_wars_rp.modules.custom_d20.rules import resolve_check
-from star_wars_rp.modules.knowledge.models import KnowledgeFragment
+from star_wars_rp.modules.history.models import DomainEvent
+from star_wars_rp.modules.knowledge.models import CharacterKnowledge, KnowledgeFragment
 from star_wars_rp.modules.resolutions.models import ActionResolution
 from star_wars_rp.modules.world.models import Location
 
 
 READY = "READY"
-SUCCESS_PENDING_APPLY = "SUCCESS_PENDING_APPLY"
-FAILURE_PENDING_CLOSE = "FAILURE_PENDING_CLOSE"
-CLOSED_SUCCESS = "CLOSED_SUCCESS"
-CLOSED_FAILURE = "CLOSED_FAILURE"
+AWAITING_ADJUDICATION = "AWAITING_ADJUDICATION"
+FINALIZED = "FINALIZED"
+SUCCESS = "SUCCESS"
+FAILURE = "FAILURE"
 
 
 def _resolution(
@@ -86,7 +87,44 @@ def _validate_bound_references(db: Session, resolution: ActionResolution) -> Non
     if not all([actor, location, recipient, fragment, assignment]):
         raise InvalidOperation("Resolution contains an invalid or cross-campaign reference")
     if resolution.actor_character_id != resolution.success_recipient_character_id:
-        raise InvalidOperation("Slice 1 success recipient must be the acting character")
+        raise InvalidOperation("Slice 3 success recipient must be the acting character")
+
+
+def _effect_context(db: Session, resolution: ActionResolution) -> tuple[Character, KnowledgeFragment]:
+    recipient = db.scalar(
+        select(Character).where(
+            Character.campaign_id == resolution.campaign_id,
+            Character.entity_id == resolution.success_recipient_character_id,
+        )
+    )
+    fragment = db.scalar(
+        select(KnowledgeFragment).where(
+            KnowledgeFragment.campaign_id == resolution.campaign_id,
+            KnowledgeFragment.id == resolution.success_fragment_id,
+        )
+    )
+    if recipient is None or fragment is None:
+        raise InvalidOperation("Resolution success effect is no longer valid")
+    return recipient, fragment
+
+
+def _previous_final_outcome(db: Session, resolution: ActionResolution) -> str | None:
+    if resolution.adjudication_revision < 2:
+        return None
+    event = db.scalar(
+        select(DomainEvent)
+        .where(
+            DomainEvent.campaign_id == resolution.campaign_id,
+            DomainEvent.subject_id == resolution.id,
+            DomainEvent.event_type == "resolution.adjudication_corrected",
+        )
+        .order_by(DomainEvent.occurred_at.desc(), DomainEvent.id.desc())
+        .limit(1)
+    )
+    if event is None:
+        return None
+    value = event.payload.get("previous_final_outcome")
+    return value if value in {SUCCESS, FAILURE} else None
 
 
 def create_resolution(
@@ -133,18 +171,7 @@ def create_resolution(
 
 
 def serialize_resolution(db: Session, resolution: ActionResolution) -> dict:
-    recipient = db.scalar(
-        select(Character).where(
-            Character.campaign_id == resolution.campaign_id,
-            Character.entity_id == resolution.success_recipient_character_id,
-        )
-    )
-    fragment = db.scalar(
-        select(KnowledgeFragment).where(
-            KnowledgeFragment.campaign_id == resolution.campaign_id,
-            KnowledgeFragment.id == resolution.success_fragment_id,
-        )
-    )
+    recipient, fragment = _effect_context(db, resolution)
     return {
         "id": resolution.id,
         "campaign_id": resolution.campaign_id,
@@ -158,13 +185,24 @@ def serialize_resolution(db: Session, resolution: ActionResolution) -> dict:
         "state": resolution.state,
         "natural_roll": resolution.natural_roll,
         "total": resolution.total,
-        "outcome": resolution.outcome,
+        "mechanical_result": resolution.mechanical_result,
+        "final_outcome": resolution.final_outcome,
         "failure_adjudication": resolution.failure_adjudication,
+        "adjudication_reason": resolution.adjudication_reason,
+        "adjudicated_at": resolution.adjudicated_at,
+        "adjudication_revision": resolution.adjudication_revision,
+        "is_overridden": bool(
+            resolution.final_outcome
+            and resolution.mechanical_result
+            and resolution.final_outcome != resolution.mechanical_result
+        ),
+        "is_corrected": resolution.adjudication_revision > 1,
+        "previous_final_outcome": _previous_final_outcome(db, resolution),
         "success_preview": {
             "recipient_character_id": resolution.success_recipient_character_id,
-            "recipient_name": recipient.name if recipient else "",
+            "recipient_name": recipient.name,
             "fragment_id": resolution.success_fragment_id,
-            "claim_text": fragment.claim_text if fragment else "",
+            "claim_text": fragment.claim_text,
         },
     }
 
@@ -202,114 +240,241 @@ def roll_resolution(
 ) -> dict:
     require_gm(db, gm_principal_id, campaign_id)
     resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
+
     if resolution.state != READY:
-        raise Conflict("Resolution has already been rolled or closed")
+        if resolution.natural_roll is not None:
+            return serialize_resolution(db, resolution)
+        raise Conflict("Resolution is not ready to roll")
 
     _validate_bound_references(db, resolution)
     natural = secrets.randbelow(20) + 1
     total, success = resolve_check(natural, resolution.resolved_modifier, resolution.dc)
     resolution.natural_roll = natural
     resolution.total = total
-    resolution.outcome = "SUCCESS" if success else "FAILURE"
-    resolution.state = SUCCESS_PENDING_APPLY if success else FAILURE_PENDING_CLOSE
+    resolution.mechanical_result = SUCCESS if success else FAILURE
+    resolution.state = AWAITING_ADJUDICATION
     resolution.rolled_at = datetime.now(timezone.utc)
     db.commit()
     return serialize_resolution(db, resolution)
 
 
-def apply_success(
+def _normalize_reason(reason: str | None) -> str | None:
+    if reason is None:
+        return None
+    value = reason.strip()
+    return value or None
+
+
+def _failure_adjudication(
+    resolution: ActionResolution,
+    supplied: str | None,
+) -> str:
+    value = supplied.strip() if supplied is not None else resolution.risk.strip()
+    if not value:
+        raise InvalidOperation("Failure adjudication is required")
+    return value
+
+
+def _current_matches_finalize(
+    resolution: ActionResolution,
+    *,
+    final_outcome: str,
+    failure_adjudication: str | None,
+    reason: str | None,
+) -> bool:
+    if resolution.adjudication_revision != 1:
+        return False
+    if resolution.final_outcome != final_outcome:
+        return False
+    expected_failure = (
+        _failure_adjudication(resolution, failure_adjudication)
+        if final_outcome == FAILURE
+        else None
+    )
+    expected_reason = (
+        _normalize_reason(reason)
+        if resolution.mechanical_result != final_outcome
+        else None
+    )
+    return (
+        resolution.failure_adjudication == expected_failure
+        and resolution.adjudication_reason == expected_reason
+    )
+
+
+def finalize_resolution(
     db: Session,
     gm_principal_id: uuid.UUID,
     campaign_id: uuid.UUID,
     resolution_id: uuid.UUID,
+    final_outcome: str,
+    failure_adjudication: str | None = None,
+    reason: str | None = None,
 ) -> dict:
     require_gm(db, gm_principal_id, campaign_id)
+    if final_outcome not in {SUCCESS, FAILURE}:
+        raise InvalidOperation("Final outcome must be SUCCESS or FAILURE")
+
     resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
 
-    if resolution.state == CLOSED_SUCCESS:
-        return serialize_resolution(db, resolution)
-    if resolution.state != SUCCESS_PENDING_APPLY:
-        raise Conflict("Only a successful pending resolution can be applied")
+    if resolution.state == FINALIZED:
+        if _current_matches_finalize(
+            resolution,
+            final_outcome=final_outcome,
+            failure_adjudication=failure_adjudication,
+            reason=reason,
+        ):
+            return serialize_resolution(db, resolution)
+        raise Conflict("Resolution is already finalized; use Correct outcome")
+
+    if resolution.state != AWAITING_ADJUDICATION:
+        raise Conflict("Resolution must be rolled before Finalize")
 
     _validate_bound_references(db, resolution)
-    make_character_aware(
-        db,
-        campaign_id,
-        resolution.success_recipient_character_id,
-        resolution.success_fragment_id,
-    )
+    recipient, fragment = _effect_context(db, resolution)
+    now = datetime.now(timezone.utc)
+    overridden = resolution.mechanical_result != final_outcome
+    stored_reason = _normalize_reason(reason) if overridden else None
 
-    fragment = db.scalar(
-        select(KnowledgeFragment).where(
-            KnowledgeFragment.campaign_id == campaign_id,
-            KnowledgeFragment.id == resolution.success_fragment_id,
+    if final_outcome == SUCCESS:
+        make_character_aware(
+            db,
+            campaign_id,
+            resolution.success_recipient_character_id,
+            resolution.success_fragment_id,
         )
-    )
-    recipient = db.scalar(
-        select(Character).where(
-            Character.campaign_id == campaign_id,
-            Character.entity_id == resolution.success_recipient_character_id,
-        )
-    )
+        concrete_failure = None
+    else:
+        concrete_failure = _failure_adjudication(resolution, failure_adjudication)
 
-    resolution.state = CLOSED_SUCCESS
-    resolution.closed_at = datetime.now(timezone.utc)
+    resolution.final_outcome = final_outcome
+    resolution.failure_adjudication = concrete_failure
+    resolution.adjudication_reason = stored_reason
+    resolution.adjudicated_by_principal_id = gm_principal_id
+    resolution.adjudicated_at = now
+    resolution.adjudication_revision = 1
+    resolution.state = FINALIZED
+
+    payload = {
+        "resolution_id": str(resolution.id),
+        "adjudication_revision": 1,
+        "mechanical_result": resolution.mechanical_result,
+        "final_outcome": final_outcome,
+        "overridden": overridden,
+    }
+    if stored_reason is not None:
+        payload["adjudication_reason"] = stored_reason
+    if concrete_failure is not None:
+        payload["failure_adjudication"] = concrete_failure
+    if final_outcome == SUCCESS:
+        payload.update(
+            {
+                "recipient_character_id": str(resolution.success_recipient_character_id),
+                "recipient_name": recipient.name,
+                "fragment_id": str(resolution.success_fragment_id),
+                "claim_text": fragment.claim_text,
+            }
+        )
+
     append_domain_event(
         db,
         campaign_id=campaign_id,
-        event_type="resolution.success_applied",
+        event_type="resolution.adjudication_finalized",
         subject_type="action_resolution",
         subject_id=resolution.id,
         actor_principal_id=gm_principal_id,
-        payload={
-            "resolution_id": str(resolution.id),
-            "recipient_character_id": str(resolution.success_recipient_character_id),
-            "recipient_name": recipient.name,
-            "fragment_id": str(resolution.success_fragment_id),
-            "claim_text": fragment.claim_text,
-            "intent": resolution.intent,
-        },
+        payload=payload,
     )
     db.commit()
     return serialize_resolution(db, resolution)
 
 
-def close_failure(
+def correct_resolution(
     db: Session,
     gm_principal_id: uuid.UUID,
     campaign_id: uuid.UUID,
     resolution_id: uuid.UUID,
-    adjudication: str,
+    expected_adjudication_revision: int,
+    final_outcome: str,
+    correction_reason: str,
+    failure_adjudication: str | None = None,
 ) -> dict:
     require_gm(db, gm_principal_id, campaign_id)
-    resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
-    adjudication = adjudication.strip()
+    if final_outcome not in {SUCCESS, FAILURE}:
+        raise InvalidOperation("Final outcome must be SUCCESS or FAILURE")
 
-    if resolution.state == CLOSED_FAILURE:
-        if resolution.failure_adjudication == adjudication:
-            return serialize_resolution(db, resolution)
-        raise Conflict("Closed failure adjudication cannot be replaced in Slice 1")
-    if resolution.state != FAILURE_PENDING_CLOSE:
-        raise Conflict("Only a failed pending resolution can be closed")
-    if not adjudication:
-        raise InvalidOperation("Failure adjudication is required")
+    correction_reason = correction_reason.strip()
+    if not correction_reason:
+        raise InvalidOperation("Correction reason is required")
+
+    resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
+    if resolution.state != FINALIZED:
+        raise Conflict("Only a finalized resolution can be corrected")
+    if resolution.adjudication_revision != expected_adjudication_revision:
+        raise Conflict("Adjudication revision changed; reload before correcting")
 
     _validate_bound_references(db, resolution)
-    resolution.failure_adjudication = adjudication
-    resolution.state = CLOSED_FAILURE
-    resolution.closed_at = datetime.now(timezone.utc)
+    previous_final_outcome = resolution.final_outcome
+    previous_failure_adjudication = resolution.failure_adjudication
+    concrete_failure = (
+        _failure_adjudication(resolution, failure_adjudication)
+        if final_outcome == FAILURE
+        else None
+    )
+
+    if (
+        previous_final_outcome == final_outcome
+        and previous_failure_adjudication == concrete_failure
+    ):
+        raise InvalidOperation("Correction must change the adjudication")
+
+    knowledge_key = {
+        "campaign_id": campaign_id,
+        "character_id": resolution.success_recipient_character_id,
+        "fragment_id": resolution.success_fragment_id,
+    }
+    knowledge_before = db.get(CharacterKnowledge, knowledge_key)
+    success_disclosure_applied_now = False
+    prior_success_disclosure_retained = False
+
+    if final_outcome == SUCCESS:
+        if knowledge_before is None:
+            success_disclosure_applied_now = True
+        make_character_aware(
+            db,
+            campaign_id,
+            resolution.success_recipient_character_id,
+            resolution.success_fragment_id,
+        )
+    elif previous_final_outcome == SUCCESS and knowledge_before is not None:
+        prior_success_disclosure_retained = True
+
+    previous_revision = resolution.adjudication_revision
+    resolution.final_outcome = final_outcome
+    resolution.failure_adjudication = concrete_failure
+    resolution.adjudication_reason = correction_reason
+    resolution.adjudicated_by_principal_id = gm_principal_id
+    resolution.adjudicated_at = datetime.now(timezone.utc)
+    resolution.adjudication_revision = previous_revision + 1
+
     append_domain_event(
         db,
         campaign_id=campaign_id,
-        event_type="resolution.failure_closed",
+        event_type="resolution.adjudication_corrected",
         subject_type="action_resolution",
         subject_id=resolution.id,
         actor_principal_id=gm_principal_id,
         payload={
             "resolution_id": str(resolution.id),
-            "intent": resolution.intent,
-            "risk": resolution.risk,
-            "adjudication": adjudication,
+            "previous_revision": previous_revision,
+            "new_revision": resolution.adjudication_revision,
+            "previous_final_outcome": previous_final_outcome,
+            "final_outcome": final_outcome,
+            "previous_failure_adjudication": previous_failure_adjudication,
+            "failure_adjudication": concrete_failure,
+            "correction_reason": correction_reason,
+            "success_disclosure_applied_now": success_disclosure_applied_now,
+            "prior_success_disclosure_retained": prior_success_disclosure_retained,
         },
     )
     db.commit()
