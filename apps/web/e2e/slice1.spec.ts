@@ -27,6 +27,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByLabel("New campaign").fill(`Campaign ${id}`);
   await gmPage.getByRole("button", { name: "Create as GM" }).click();
+  await gmPage.getByText("Slice 1 proof setup").click();
 
   await gmPage.getByLabel("Registered username").fill(playerName);
   await gmPage.getByRole("button", { name: "Add to campaign" }).click();
@@ -36,7 +37,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   await gmPage.getByRole("button", { name: "Create character" }).click();
   await expect(gmPage.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
   await gmPage.getByRole("button", { name: "Create location" }).click();
-  await expect(gmPage.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
+  await expect(gmPage.locator("details.legacy-setup").getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await gmPage.getByRole("button", { name: "Create secret" }).click();
   await expect(gmPage.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
 
@@ -48,6 +49,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
 
   await gmPage.reload();
+  await gmPage.getByText("Slice 1 proof setup").click();
   await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
   await expect(gmPage.getByRole("button", { name: "Apply reveal" })).toBeVisible();
 
@@ -58,6 +60,7 @@ test("success reveals only after GM Apply", async ({ browser }) => {
 
   await gmPage.getByRole("button", { name: "Apply reveal" }).click();
   await gmPage.reload();
+  await gmPage.getByText("Slice 1 proof setup").click();
   await expect(gmPage.getByText("Resolution closed.")).toBeVisible();
   await playerPage.reload();
   await expect(playerPage.getByText("The confiscated shipment was transferred to Dock 47.")).toBeVisible();
@@ -77,6 +80,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
 
   await page.getByLabel("New campaign").fill(`Failure ${id}`);
   await page.getByRole("button", { name: "Create as GM" }).click();
+  await page.getByText("Slice 1 proof setup").click();
   await page.getByLabel("Registered username").fill(playerName);
   await page.getByRole("button", { name: "Add to campaign" }).click();
   await expect(page.locator("ul.compact li", { hasText: playerName })).toBeVisible();
@@ -84,7 +88,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await page.getByRole("button", { name: "Create character" }).click();
   await expect(page.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
   await page.getByRole("button", { name: "Create location" }).click();
-  await expect(page.getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
+  await expect(page.locator("details.legacy-setup").getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create secret" }).click();
   await expect(page.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Assign" }).click();
@@ -95,6 +99,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
 
   await page.reload();
+  await page.getByText("Slice 1 proof setup").click();
   await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Close failed resolution" })).toBeVisible();
   await page.getByRole("button", { name: "Close failed resolution" }).click();
@@ -102,6 +107,7 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
   await expect(page.getByText("Imperial security logs the intrusion.")).toBeVisible();
   await page.reload();
+  await page.getByText("Slice 1 proof setup").click();
   await expect(page.getByText("Resolution closed.")).toBeVisible();
   await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
 });

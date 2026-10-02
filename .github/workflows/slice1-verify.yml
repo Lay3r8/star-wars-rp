@@ -1,9 +1,10 @@
-name: Slice 1 verification
+name: Vertical slice verification
 
 on:
   push:
     branches:
       - ai/architecture/slice-1
+      - ai/architecture/slice-2-contact
   pull_request:
     branches:
       - main
@@ -105,7 +106,7 @@ jobs:
             sleep 1
           done
 
-      - name: Run Playwright Slice 1 flows
+      - name: Run Playwright vertical slice flows
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -113,9 +114,10 @@ jobs:
           docker compose -f infra/compose.yaml --profile test run --rm e2e npm run test:e2e -- --reporter=line 2>&1 | tee /tmp/e2e.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            failure="$(grep -m1 -E 'slice1\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log || true)"
-            locator="$(grep -m1 -E 'Locator:|Error: expect\(locator\)' /tmp/e2e.log || true)"
-            message="$(printf '%s %s' "$locator" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
+            failure="$(grep -m1 -E 'e2e/[^ ]+\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log || true)"
+            locator="$(grep -m1 -E 'Locator:' /tmp/e2e.log || true)"
+            error_line="$(grep -m1 -E 'Error:|TimeoutError:|strict mode violation' /tmp/e2e.log || true)"
+            message="$(printf '%s %s %s' "$locator" "$error_line" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
             if [ -z "$message" ]; then
               message="$(sed '/^[[:space:]]*$/d' /tmp/e2e.log | tail -n 1 | cut -c1-130)"
             fi
@@ -128,7 +130,7 @@ jobs:
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context=slice1/e2e \
-            -f description="Playwright Slice 1 flows passed"
+            -f description="Playwright vertical slice flows passed"
 
       - name: Cleanup
         if: always()

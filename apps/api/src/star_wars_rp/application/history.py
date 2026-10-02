@@ -51,6 +51,11 @@ def campaign_history(
             )
         elif event.event_type == "resolution.failure_closed":
             message = payload.get("adjudication", "Failed resolution closed")
+        elif event.event_type == "contact.information_revealed":
+            message = (
+                f"{payload.get('recipient_name', 'Character')} learned from "
+                f"{payload.get('contact_name', 'Contact')}: {payload.get('claim_text', '')}"
+            )
         else:
             message = event.event_type
 
