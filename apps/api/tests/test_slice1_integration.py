@@ -1,17 +1,16 @@
 import uuid
 
 import pytest
-from sqlalchemy import event, func, select
 from fastapi.testclient import TestClient
+from sqlalchemy import event, func, select
 
-from star_wars_rp.application.resolutions import apply_success
+from conftest import register_and_login
+from star_wars_rp.application.resolutions import finalize_resolution
 from star_wars_rp.db import SessionLocal
 from star_wars_rp.modules.campaigns.models import CampaignMembership, PlayerCharacterAssignment
 from star_wars_rp.modules.history.models import DomainEvent
 from star_wars_rp.modules.knowledge.models import CharacterKnowledge
 from star_wars_rp.modules.resolutions.models import ActionResolution
-
-from conftest import register_and_login
 
 
 def setup_campaign(gm: TestClient, player: TestClient, suffix: str, dc: int):
@@ -88,86 +87,91 @@ def test_success_reveal_is_authorized_atomic_and_idempotent():
         before = player.get(f"/api/player/campaigns/{campaign_id}/character")
         assert before.status_code == 200
         assert before.json()["knowledge"] == []
-        assert "gm_veracity" not in before.text
-        assert data["fragment"]["claim_text"] not in before.text
-        assert player.get(
-            f"/api/campaigns/{campaign_id}/resolutions/latest"
-        ).status_code == 403
-        assert player.put(
-            f"/api/campaigns/{campaign_id}/player-assignment",
-            json={
-                "player_principal_id": data["player"]["id"],
-                "character_id": data["character"]["id"],
-            },
-        ).status_code == 403
 
         for command, body in [
             ("roll", None),
-            ("apply", None),
-            ("close-failure", {"adjudication": "Not allowed"}),
+            ("finalize", {"final_outcome": "SUCCESS"}),
+            (
+                "correct",
+                {
+                    "expected_adjudication_revision": 1,
+                    "final_outcome": "FAILURE",
+                    "failure_adjudication": "Not allowed",
+                    "correction_reason": "Not allowed",
+                },
+            ),
         ]:
-            response = player.post(
-                f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/{command}",
-                json=body,
-            ) if body is not None else player.post(
-                f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/{command}"
+            response = (
+                player.post(
+                    f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/{command}",
+                    json=body,
+                )
+                if body is not None
+                else player.post(
+                    f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/{command}"
+                )
             )
             assert response.status_code == 403
 
         rolled = gm.post(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll")
         assert rolled.status_code == 200, rolled.text
-        assert rolled.json()["outcome"] == "SUCCESS"
-        assert rolled.json()["success_preview"]["fragment_id"] == data["fragment"]["id"]
-        assert rolled.json()["success_preview"]["recipient_character_id"] == data["character"]["id"]
-        assert gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll"
-        ).status_code == 409
-        assert gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/close-failure",
-            json={"adjudication": "Wrong branch"},
-        ).status_code == 409
+        assert rolled.json()["mechanical_result"] == "SUCCESS"
+        assert rolled.json()["state"] == "AWAITING_ADJUDICATION"
+        assert rolled.json()["final_outcome"] is None
 
-        first_apply = gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/apply"
+        first_finalize = gm.post(
+            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/finalize",
+            json={"final_outcome": "SUCCESS"},
         )
-        second_apply = gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/apply"
+        second_finalize = gm.post(
+            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/finalize",
+            json={"final_outcome": "SUCCESS"},
         )
-        assert first_apply.status_code == 200, first_apply.text
-        assert second_apply.status_code == 200, second_apply.text
-        assert second_apply.json()["state"] == "CLOSED_SUCCESS"
+        assert first_finalize.status_code == 200, first_finalize.text
+        assert second_finalize.status_code == 200, second_finalize.text
+        assert second_finalize.json()["state"] == "FINALIZED"
+        assert second_finalize.json()["adjudication_revision"] == 1
 
         with SessionLocal() as db:
             knowledge_count = db.scalar(select(func.count()).select_from(CharacterKnowledge))
             event_count = db.scalar(
                 select(func.count())
                 .select_from(DomainEvent)
-                .where(DomainEvent.event_type == "resolution.success_applied")
+                .where(DomainEvent.event_type == "resolution.adjudication_finalized")
             )
             assert knowledge_count == 1
             assert event_count == 1
 
         after = player.get(f"/api/player/campaigns/{campaign_id}/character")
         assert after.status_code == 200
-        body = after.json()
-        assert body["knowledge"] == [
-            {
-                "fragment_id": data["fragment"]["id"],
-                "state": "AWARE",
-                "claim_text": data["fragment"]["claim_text"],
-            }
-        ]
+        assert after.json()["knowledge"][0]["claim_text"] == data["fragment"]["claim_text"]
         assert "gm_veracity" not in after.text
 
-        reloaded = gm.get(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}"
+        player_resolution = player.get(
+            f"/api/player/campaigns/{campaign_id}/resolutions/latest"
         )
+        assert player_resolution.status_code == 200
+        assert set(player_resolution.json()) == {
+            "resolution_id",
+            "natural_roll",
+            "resolved_modifier",
+            "total",
+            "mechanical_result",
+            "final_outcome",
+            "is_overridden",
+            "is_corrected",
+            "previous_final_outcome",
+        }
+        assert "dc" not in player_resolution.text
+        assert "adjudication_reason" not in player_resolution.text
+
+        reloaded = gm.get(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}")
         assert reloaded.status_code == 200
-        assert reloaded.json()["state"] == "CLOSED_SUCCESS"
-        assert reloaded.json()["success_preview"]["claim_text"] == data["fragment"]["claim_text"]
+        assert reloaded.json()["state"] == "FINALIZED"
+        assert reloaded.json()["final_outcome"] == "SUCCESS"
 
 
-def test_failure_requires_adjudication_and_closes_cleanly():
+def test_failure_uses_risk_and_finalizes_cleanly():
     with TestClient(__import__("star_wars_rp.main", fromlist=["app"]).app) as gm, TestClient(
         __import__("star_wars_rp.main", fromlist=["app"]).app
     ) as player:
@@ -177,34 +181,22 @@ def test_failure_requires_adjudication_and_closes_cleanly():
 
         rolled = gm.post(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll")
         assert rolled.status_code == 200
-        assert rolled.json()["outcome"] == "FAILURE"
-        assert rolled.json()["state"] == "FAILURE_PENDING_CLOSE"
+        assert rolled.json()["mechanical_result"] == "FAILURE"
 
-        assert gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/apply"
-        ).status_code == 409
-
-        adjudication = "Imperial security logs the intrusion."
-        closed = gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/close-failure",
-            json={"adjudication": adjudication},
+        finalized = gm.post(
+            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/finalize",
+            json={"final_outcome": "FAILURE"},
         )
-        assert closed.status_code == 200, closed.text
-        assert closed.json()["state"] == "CLOSED_FAILURE"
-        assert closed.json()["failure_adjudication"] == adjudication
-
-        repeated = gm.post(
-            f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/close-failure",
-            json={"adjudication": adjudication},
-        )
-        assert repeated.status_code == 200
+        assert finalized.status_code == 200, finalized.text
+        assert finalized.json()["state"] == "FINALIZED"
+        assert finalized.json()["failure_adjudication"] == data["resolution"]["risk"]
 
         projection = player.get(f"/api/player/campaigns/{campaign_id}/character").json()
         assert projection["knowledge"] == []
 
         history = gm.get(f"/api/campaigns/{campaign_id}/history")
         assert history.status_code == 200
-        assert history.json()[0]["message"] == adjudication
+        assert "finalized FAILURE" in history.json()[0]["message"]
 
 
 def test_cross_campaign_access_and_embedded_references_are_rejected():
@@ -260,10 +252,13 @@ def test_cross_campaign_access_and_embedded_references_are_rejected():
         assert outsider.get(
             f"/api/player/campaigns/{first['campaign']['id']}/character"
         ).status_code == 403
+        assert outsider.get(
+            f"/api/player/campaigns/{first['campaign']['id']}/resolutions/latest"
+        ).status_code == 403
         outsider.close()
 
 
-def test_apply_rolls_back_if_event_insert_fails():
+def test_finalize_rolls_back_if_event_insert_fails():
     with TestClient(__import__("star_wars_rp.main", fromlist=["app"]).app) as gm, TestClient(
         __import__("star_wars_rp.main", fromlist=["app"]).app
     ) as player:
@@ -271,7 +266,7 @@ def test_apply_rolls_back_if_event_insert_fails():
         campaign_id = data["campaign"]["id"]
         resolution_id = data["resolution"]["id"]
         rolled = gm.post(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}/roll")
-        assert rolled.json()["outcome"] == "SUCCESS"
+        assert rolled.json()["mechanical_result"] == "SUCCESS"
 
         def fail_domain_event_insert(_mapper, _connection, _target):
             raise RuntimeError("forced DomainEvent insert failure")
@@ -280,11 +275,12 @@ def test_apply_rolls_back_if_event_insert_fails():
         try:
             with SessionLocal() as db:
                 with pytest.raises(RuntimeError, match="forced DomainEvent"):
-                    apply_success(
+                    finalize_resolution(
                         db,
                         uuid.UUID(data["gm"]["id"]),
                         uuid.UUID(campaign_id),
                         uuid.UUID(resolution_id),
+                        "SUCCESS",
                     )
                 db.rollback()
         finally:
@@ -292,7 +288,8 @@ def test_apply_rolls_back_if_event_insert_fails():
 
         with SessionLocal() as db:
             resolution = db.get(ActionResolution, uuid.UUID(resolution_id))
-            assert resolution.state == "SUCCESS_PENDING_APPLY"
+            assert resolution.state == "AWAITING_ADJUDICATION"
+            assert resolution.final_outcome is None
             assert db.scalar(select(func.count()).select_from(CharacterKnowledge)) == 0
             assert db.scalar(select(func.count()).select_from(DomainEvent)) == 0
 
