@@ -46,7 +46,11 @@ jobs:
             api pytest -q 2>&1 | tee /tmp/pytest.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            message="$(tail -n 1 /tmp/pytest.log | tr '\n' ' ' | cut -c1-130)"
+            message="$(grep -m1 -E 'FAILED|ERROR|ImportError|AttributeError|AssertionError|sqlalchemy\\.exc|alembic\\.util\\.exc|E[[:space:]]+' /tmp/pytest.log || true)"
+            if [ -z "$message" ]; then
+              message="$(sed '/^[[:space:]]*$/d' /tmp/pytest.log | tail -n 1)"
+            fi
+            message="$(printf '%s' "$message" | tr '\n' ' ' | cut -c1-130)"
             gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
               -f state=error \
               -f context=slice1/backend-tests \

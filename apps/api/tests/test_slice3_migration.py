@@ -224,7 +224,7 @@ def test_slice3_data_migration_maps_legacy_resolution_rows():
 
     with engine.begin() as connection:
         mapped = {
-            row.id: row
+            row["id"]: row
             for row in connection.execute(
                 text(
                     """
@@ -241,31 +241,31 @@ def test_slice3_data_migration_maps_legacy_resolution_rows():
             ).mappings()
         }
 
-        assert mapped[ready_id].state == "READY"
-        assert mapped[ready_id].adjudication_revision == 0
+        assert mapped[ready_id]["state"] == "READY"
+        assert mapped[ready_id]["adjudication_revision"] == 0
 
-        assert mapped[pending_success_id].state == "AWAITING_ADJUDICATION"
-        assert mapped[pending_success_id].mechanical_result == "SUCCESS"
-        assert mapped[pending_success_id].natural_roll == 12
-        assert mapped[pending_success_id].total == 14
-        assert mapped[pending_success_id].final_outcome is None
+        assert mapped[pending_success_id]["state"] == "AWAITING_ADJUDICATION"
+        assert mapped[pending_success_id]["mechanical_result"] == "SUCCESS"
+        assert mapped[pending_success_id]["natural_roll"] == 12
+        assert mapped[pending_success_id]["total"] == 14
+        assert mapped[pending_success_id]["final_outcome"] is None
 
-        assert mapped[pending_failure_id].state == "AWAITING_ADJUDICATION"
-        assert mapped[pending_failure_id].mechanical_result == "FAILURE"
-        assert mapped[pending_failure_id].natural_roll == 3
-        assert mapped[pending_failure_id].total == 5
+        assert mapped[pending_failure_id]["state"] == "AWAITING_ADJUDICATION"
+        assert mapped[pending_failure_id]["mechanical_result"] == "FAILURE"
+        assert mapped[pending_failure_id]["natural_roll"] == 3
+        assert mapped[pending_failure_id]["total"] == 5
 
-        assert mapped[closed_success_id].state == "FINALIZED"
-        assert mapped[closed_success_id].final_outcome == "SUCCESS"
-        assert mapped[closed_success_id].adjudication_revision == 1
-        assert mapped[closed_success_id].adjudicated_by_principal_id == gm_id
-        assert mapped[closed_success_id].adjudicated_at is not None
+        assert mapped[closed_success_id]["state"] == "FINALIZED"
+        assert mapped[closed_success_id]["final_outcome"] == "SUCCESS"
+        assert mapped[closed_success_id]["adjudication_revision"] == 1
+        assert mapped[closed_success_id]["adjudicated_by_principal_id"] == gm_id
+        assert mapped[closed_success_id]["adjudicated_at"] is not None
 
-        assert mapped[closed_failure_id].state == "FINALIZED"
-        assert mapped[closed_failure_id].final_outcome == "FAILURE"
-        assert mapped[closed_failure_id].failure_adjudication == "Imperial security notices."
-        assert mapped[closed_failure_id].adjudication_revision == 1
-        assert mapped[closed_failure_id].adjudicated_by_principal_id == gm_id
+        assert mapped[closed_failure_id]["state"] == "FINALIZED"
+        assert mapped[closed_failure_id]["final_outcome"] == "FAILURE"
+        assert mapped[closed_failure_id]["failure_adjudication"] == "Imperial security notices."
+        assert mapped[closed_failure_id]["adjudication_revision"] == 1
+        assert mapped[closed_failure_id]["adjudicated_by_principal_id"] == gm_id
 
         assert connection.execute(
             text("SELECT count(*) FROM character_knowledge")

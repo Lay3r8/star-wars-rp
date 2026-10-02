@@ -82,12 +82,14 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (p: Principal) => vo
 
 function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
   const [projection, setProjection] = useState<PlayerProjection | null>(null);
+  const [resolutionRefreshKey, setResolutionRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
       setProjection(await api<PlayerProjection>(`/api/player/campaigns/${campaign.id}/character`));
+      setResolutionRefreshKey((value) => value + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load player projection");
     }
@@ -116,7 +118,7 @@ function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
               <ul>{projection.knowledge.map((item) => <li key={item.fragment_id}>{item.claim_text}</li>)}</ul>
             )}
           </div>
-          <PlayerResolutionPanel campaignId={campaign.id} />
+          <PlayerResolutionPanel campaignId={campaign.id} refreshKey={resolutionRefreshKey} />
         </>
       )}
     </section>

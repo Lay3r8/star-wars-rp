@@ -14,14 +14,14 @@ type Summary = {
   previous_final_outcome: "SUCCESS" | "FAILURE" | null;
 };
 
-export default function PlayerResolutionPanel({ campaignId }: { campaignId: string }) {
+export default function PlayerResolutionPanel({ campaignId, refreshKey }: { campaignId: string; refreshKey: number }) {
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
     api<Summary | null>(`/api/player/campaigns/${campaignId}/resolutions/latest`)
       .then(setSummary)
       .catch(() => setSummary(null));
-  }, [campaignId]);
+  }, [campaignId, refreshKey]);
 
   if (!summary) return null;
 
