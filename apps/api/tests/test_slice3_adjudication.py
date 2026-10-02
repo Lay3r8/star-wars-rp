@@ -237,6 +237,7 @@ def test_success_to_failure_correction_retains_irreversible_knowledge():
         assert summary.json()["final_outcome"] == "FAILURE"
         assert summary.json()["is_corrected"] is True
         assert summary.json()["previous_final_outcome"] == "SUCCESS"
+        player_summary = summary.json()
         for forbidden in [
             "dc",
             "adjudication_reason",
@@ -245,7 +246,7 @@ def test_success_to_failure_correction_retains_irreversible_knowledge():
             "gm_veracity",
             "risk",
         ]:
-            assert forbidden not in summary.text
+            assert forbidden not in player_summary
 
         with SessionLocal() as db:
             knowledge_count = db.scalar(
