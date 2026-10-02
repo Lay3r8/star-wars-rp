@@ -1,6 +1,6 @@
 # Slice 3 Candidate Consolidation
 
-**Status:** PROPOSED — HUMAN ARBITRATION REQUIRED  
+**Status:** HUMAN OPTION SELECTED — SLICE SPECIFICATION REQUIRED  
 **Owner:** Product Lead  
 **Purpose:** Consolidated cross-domain review and Human arbitration artifact  
 **Source of truth:** current `main` + completed Game Design, UX and Architecture reviews of PR #14
@@ -866,22 +866,62 @@ It is a good slice, but after two knowledge/disclosure-heavy slices, the margina
 
 ---
 
-# 8. Human decision
+# 8. Human arbitration outcome
 
-No option is ACCEPTED by this document.
+**Date:** 2026-10-02  
+**Human Project Owner decision:** **OPTION A — Roll, Review and Adjudicate**
 
-The Human Project Owner must choose the Slice 3 learning priority:
+## Decision meaning
 
-- **Option A:** resolution authority/foundation;
-- **Option B:** core combat gameplay;
-- **Option C:** procedural-generation differentiation.
+Option A is selected as the basis for Slice 3 specification.
 
-After Human selection:
+This is **not yet an ACCEPTED implementation slice**.
 
-1. selected option becomes **SELECTED FOR SPECIFICATION**, not immediately ACCEPTED;
-2. only the blocking cross-domain contracts for that option are finalized;
-3. Product writes the exact Slice 3 spec;
-4. `docs/planning/current-slice.md` remains unchanged until the final spec is accepted;
-5. implementation remains unauthorized until then.
+Before implementation is authorized, the selected option must be converted into an exact cross-domain contract covering:
 
-PR #14 remains open and must not be merged as an implementation authorization.
+- exact user scenario;
+- which persisted/consequential roll is used for the slice;
+- immutable raw roll and mechanical result semantics;
+- final GM adjudication semantics;
+- override boundaries;
+- finalization/commit boundary;
+- correction/supersession semantics;
+- behavior for already-applied or cognitively irreversible effects;
+- Player-visible result/history, if any;
+- UX common path vs exceptional override/correction path;
+- architecture migration/evolution boundary for the existing Slice-1-specific ActionResolution;
+- authorization/security;
+- acceptance criteria and tests;
+- explicit exclusions.
+
+## Human-selected priority
+
+The selected priority is:
+
+> strengthen resolution authority/foundation before introducing combat or collaborative Player rolling.
+
+## Deferred options
+
+- **Combat — Escape the Imperial Patrol:** remains a credible later slice; still requires a combat micro-contract.
+- **Generation — Generate, Review and Play One Situation:** remains a credible later slice; still requires package/lifecycle/provider contracts.
+- **Player Knowledge Library:** remains deferred despite high readiness.
+- **Campaign Catalogue Publication:** remains deferred; publication/security contracts are still required.
+- **Collaborative Player Roll:** remains deferred and should benefit from the adjudication contract established here.
+
+---
+
+# 9. Slice 3 specification gate
+
+The selected option becomes ACCEPTED only after:
+
+1. Game Design finalizes the minimum mechanical-result vs adjudicated-outcome contract.
+2. UX finalizes the minimum common-path finalization, exceptional override, and correction flows.
+3. Architecture confirms the narrowest persistence/API evolution compatible with the accepted semantics.
+4. Product consolidates those inputs into one exact end-to-end scenario and acceptance contract.
+5. Any genuine material cross-domain disagreement is escalated to the Human Project Owner.
+6. `docs/planning/current-slice.md` is updated only after the final Slice 3 specification is accepted.
+7. Implementation begins only after that accepted contract is merged into `main`.
+
+Until then, Option A is **SELECTED FOR SPECIFICATION**, not `ACCEPTED`.
+
+PR #14 remains a selection artifact and must not be treated as implementation authorization.
