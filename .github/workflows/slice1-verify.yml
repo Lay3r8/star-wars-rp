@@ -5,6 +5,7 @@ on:
     branches:
       - ai/architecture/slice-1
       - ai/architecture/slice-2-contact
+      - ai/architecture/slice-3-adjudication
   pull_request:
     branches:
       - main
