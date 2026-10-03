@@ -1,18 +1,11 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
 const suffix = () => Math.random().toString(36).slice(2, 9);
 const claim = "The confiscated shipment was transferred to Dock 47.";
 const intent = "Obtain information about Senator Traitrus.";
 const visibleRisk = "Vic may realize you are investigating him.";
 const hiddenRisk = "Imperial counter-intelligence silently fingerprints the intrusion.";
-
-async function register(page: Page, username: string) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Create a principal" }).click();
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Register & login" }).click();
-}
 
 type Scenario = {
   gmContext: BrowserContext;
@@ -20,6 +13,23 @@ type Scenario = {
   gmPage: Page;
   playerPage: Page;
 };
+
+async function jsonRequest<T>(
+  context: BrowserContext,
+  method: "POST" | "PUT",
+  path: string,
+  data: unknown,
+  expectedStatus: number,
+): Promise<T> {
+  const response = await context.request.fetch(path, { method, data });
+  if (response.status() !== expectedStatus) {
+    throw new Error(
+      `${method} ${path} failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  if (expectedStatus === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
 
 async function prepareScenario(
   browser: Browser,
@@ -29,115 +39,112 @@ async function prepareScenario(
   const id = suffix();
   const playerName = `s4-player-${label}-${id}`;
   const gmName = `s4-gm-${label}-${id}`;
+  const password = "password123";
 
-  const playerContext = await browser.newContext();
+  const playerContext = await browser.newContext({ baseURL });
+  const gmContext = await browser.newContext({ baseURL });
   const playerPage = await playerContext.newPage();
-  playerPage.setDefaultTimeout(10_000);
-  console.log("S4_STEP: register-player");
-  await register(playerPage, playerName);
-  console.log("S4_STEP: logout-player");
-  await playerPage.getByRole("button", { name: "Logout" }).click();
-
-  const gmContext = await browser.newContext();
   const gmPage = await gmContext.newPage();
-  gmPage.setDefaultTimeout(10_000);
-  console.log("S4_STEP: register-gm");
-  await register(gmPage, gmName);
 
-  console.log("S4_STEP: create-campaign");
-  await gmPage.getByLabel("New campaign").fill(`Slice 4 ${label} ${id}`);
-  await gmPage.getByRole("button", { name: "Create as GM" }).click();
-  await gmPage.getByText("Slice 1 proof setup").click();
+  console.log("S4_STEP: create-initial-state");
+
+  const player = await jsonRequest<{ id: string; username: string }>(
+    playerContext,
+    "POST",
+    "/api/auth/register",
+    { username: playerName, password },
+    201,
+  );
+  await jsonRequest(
+    playerContext,
+    "POST",
+    "/api/auth/login",
+    { username: playerName, password },
+    200,
+  );
+
+  await jsonRequest(
+    gmContext,
+    "POST",
+    "/api/auth/register",
+    { username: gmName, password },
+    201,
+  );
+  await jsonRequest(
+    gmContext,
+    "POST",
+    "/api/auth/login",
+    { username: gmName, password },
+    200,
+  );
+
+  const campaign = await jsonRequest<{ id: string }>(
+    gmContext,
+    "POST",
+    "/api/campaigns",
+    { name: `Slice 4 ${label} ${id}` },
+    201,
+  );
+  await jsonRequest(
+    gmContext,
+    "POST",
+    `/api/campaigns/${campaign.id}/members`,
+    { username: playerName },
+    201,
+  );
+  const character = await jsonRequest<{ id: string }>(
+    gmContext,
+    "POST",
+    `/api/campaigns/${campaign.id}/characters`,
+    { name: "Globox", slicing_modifier: 2 },
+    201,
+  );
+  await jsonRequest(
+    gmContext,
+    "POST",
+    `/api/campaigns/${campaign.id}/locations`,
+    { name: "Imperial Cargo Terminal" },
+    201,
+  );
+  await jsonRequest(
+    gmContext,
+    "POST",
+    `/api/campaigns/${campaign.id}/knowledge-fragments`,
+    { claim_text: claim, gm_veracity: "TRUE" },
+    201,
+  );
+  await jsonRequest(
+    gmContext,
+    "PUT",
+    `/api/campaigns/${campaign.id}/player-assignment`,
+    { player_principal_id: player.id, character_id: character.id },
+    204,
+  );
+
+  // Both principals are already in their campaign workspaces before the GM creates
+  // the Player-roll request. This is the accepted Slice 4 initial state.
+  await Promise.all([gmPage.goto("/"), playerPage.goto("/")]);
+  await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
 
   const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
-
-  console.log("S4_STEP: add-player");
-  await gmPage.getByLabel("Registered username").fill(playerName);
-  await Promise.all([
-    gmPage.waitForResponse(
-      (response) =>
-        response.url().includes("/members") &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    ),
-    gmPage.getByRole("button", { name: "Add to campaign" }).click(),
-  ]);
-  await expect(gmPage.getByLabel("Player").locator("option")).toContainText([playerName]);
-
-  console.log("S4_STEP: create-character");
-  await gmPage.getByLabel("Character name").fill("Globox");
-  await Promise.all([
-    gmPage.waitForResponse(
-      (response) =>
-        response.url().includes("/characters") &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    ),
-    gmPage.getByRole("button", { name: "Create character" }).click(),
-  ]);
-  await expect(gmPage.getByLabel("Character").locator("option")).toContainText(["Globox"]);
-
-  console.log("S4_STEP: create-location");
-  await Promise.all([
-    gmPage.waitForResponse(
-      (response) =>
-        response.url().includes("/locations") &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    ),
-    gmPage.getByRole("button", { name: "Create location" }).click(),
-  ]);
-  await expect(
-    resolution.getByText("Imperial Cargo Terminal", { exact: true }),
-  ).toBeVisible();
-
-  console.log("S4_STEP: create-secret");
-  await Promise.all([
-    gmPage.waitForResponse(
-      (response) =>
-        response.url().includes("/knowledge-fragments") &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    ),
-    gmPage.getByRole("button", { name: "Create secret" }).click(),
-  ]);
-  await expect(resolution.getByText(claim, { exact: true })).toBeVisible();
-
-  console.log("S4_STEP: assign-player");
-  await Promise.all([
-    gmPage.waitForResponse(
-      (response) =>
-        response.url().includes("/player-assignment") &&
-        response.request().method() === "PUT" &&
-        response.status() === 204,
-    ),
-    gmPage.getByRole("button", { name: "Assign" }).click(),
-  ]);
   await expect(
     resolution.getByRole("button", { name: "Create pre-bound resolution" }),
   ).toBeEnabled();
-  await gmPage.getByText("Slice 1 proof setup").click();
-
-  // Player is already in the workspace before the GM creates the request.
-  console.log("S4_STEP: login-player");
-  await playerPage.getByLabel("Username").fill(playerName);
-  await playerPage.getByLabel("Password").fill("password123");
-  await playerPage.getByRole("button", { name: "Login" }).click();
-  await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
 
   console.log("S4_STEP: configure-resolution");
   await resolution.getByLabel("Roll authority").selectOption("PLAYER");
   await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
-  console.log("S4_STEP: fill-intent");
   await resolution.getByLabel("Intent").fill(intent);
-  console.log("S4_STEP: fill-risk");
   await resolution.getByLabel("Risk", { exact: true }).fill(
     riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
   );
-  console.log("S4_STEP: fill-dc");
   await resolution.locator('input[name="dc"]').fill("100");
+
   console.log("S4_STEP: submit-resolution");
   await resolution.getByRole("button", { name: "Create pre-bound resolution" }).click();
+  await expect(
+    gmPage.getByRole("region", { name: "Current resolution" }),
+  ).toContainText("Waiting for Player Roll");
 
   return { gmContext, playerContext, gmPage, playerPage };
 }
