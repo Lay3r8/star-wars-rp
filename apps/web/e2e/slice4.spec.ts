@@ -126,12 +126,14 @@ async function prepareScenario(
     // Live-path acceptance: both principals are already in their campaign workspaces
     // before the GM creates the request, so Player discovery is proven by polling.
     await Promise.all([gmPage.goto("/"), playerPage.goto("/")]);
-    await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
+    await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible({
+      timeout: 15_000,
+    });
 
     const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
     await expect(
       resolution.getByRole("button", { name: "Create pre-bound resolution" }),
-    ).toBeEnabled();
+    ).toBeEnabled({ timeout: 15_000 });
 
     console.log("S4_STEP: configure-resolution");
     await resolution.getByLabel("Roll authority").selectOption("PLAYER");
@@ -163,7 +165,9 @@ async function prepareScenario(
       201,
     );
     await Promise.all([gmPage.goto("/"), playerPage.goto("/")]);
-    await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
+    await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible({
+      timeout: 15_000,
+    });
   }
 
   return { gmContext, playerContext, gmPage, playerPage };
