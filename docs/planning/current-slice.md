@@ -1,146 +1,159 @@
 # Current Vertical Slice
 
-## Slice 3 — Roll, Review and Adjudicate
+## Slice 4 — GM Requests a Roll, Player Rolls, GM Adjudicates
 
 **Status:** ACCEPTED  
-**Accepted:** 2026-10-02  
+**Accepted:** 2026-10-03  
 **Owner:** Product Lead / Human Project Owner  
-**Specification:** `docs/planning/slice-3-spec.md`
+**Specification:** `docs/planning/slice-4-spec.md`
 
 ## Goal
 
-Validate a bounded GM-authoritative D20 resolution workflow that explicitly separates:
-
-1. immutable raw roll;
-2. immutable mechanical result;
-3. final GM adjudicated outcome;
-4. later correction/supersession without rewriting mechanical evidence or pretending irreversible human disclosure can be undone.
+Validate one bounded two-principal live-resolution workflow in which the GM defines the existing slicing ActionResolution, the assigned Player triggers the single authoritative backend Roll, and the GM retains the accepted Slice 3 Finalize / Override / Correct authority.
 
 ## Accepted scenario
 
-Slice 3 reuses the existing Slice-1 slicing scenario.
-
-Kara Venn attempts to slice the Imperial Cargo Terminal to discover where a confiscated shipment was transferred.
-
-The bounded workflow is:
-
 ```text
-Intent + Risk + slicing mechanic + DC + pre-bound success effect
--> Roll
--> immutable RAW ROLL
--> immutable MECHANICAL RESULT
--> GM adjudication
--> Finalize
--> bounded consequence commit
--> optional later Correct outcome
--> superseding adjudication + append-only history
+GM creates one PLAYER-authority slicing resolution
+-> assigned Player sees a safe actionable request
+-> Player triggers authoritative backend Roll
+-> immutable mechanical result
+-> GM reviews
+-> GM Finalizes or Overrides
+-> Slice 3 Correct outcome remains available
+-> both sides converge without manual global Refresh
 ```
 
-The success consequence remains:
+## Required Slice 4 contracts
 
-> Kara becomes AWARE of the pre-bound KnowledgeFragment:
-> "The confiscated shipment was transferred to Dock 47."
-
-The failure path remains one concrete GM-authored failure adjudication string; the predeclared Risk may be used unchanged when it is already sufficient.
-
-## Required Slice 3 contracts
-
-- raw d20 is generated exactly once by the backend and is immutable through normal Product commands;
-- resolved modifier, total, DC and mechanical result are immutable after Roll;
-- mechanical result remains binary SUCCESS/FAILURE for this slice;
-- final adjudicated outcome is separate from mechanical result;
-- Override is the exceptional case where final outcome differs from mechanical result;
-- Override is allowed in both binary directions;
-- override reason is optional;
-- common path uses one Finalize action after review;
-- final SUCCESS applies only the existing pre-bound CharacterKnowledge effect;
-- final FAILURE persists a concrete failure adjudication and does not apply the success effect;
-- Risk may directly supply the failure adjudication when sufficient;
-- Correct outcome creates a new adjudication that supersedes the prior one;
-- correction reason is required;
-- correction never rewrites raw/mechanical evidence;
-- FAILURE -> SUCCESS correction may add the pre-bound knowledge disclosure;
-- SUCCESS -> FAILURE after disclosure retains CharacterKnowledge = AWARE and preserves disclosure history;
-- existing Slice-1-specific ActionResolution is evolved narrowly rather than replaced;
-- current adjudication stays in PostgreSQL relational state;
-- prior adjudications remain in append-only DomainEvent history;
-- Player receives a bounded finalized-resolution projection containing raw d20, modifier, total, mechanical result, final outcome, overridden marker and corrected marker;
-- Player does not receive DC, GM reasons, failure-adjudication text, GM-only Risk/stakes, gm_veracity, or full correction history;
-- Finalize and Correct remain synchronous, row-locked and backend-authorized;
-- campaign isolation remains strict.
+- existing slicing mechanic only;
+- `roll_authority = GM | PLAYER` on ActionResolution;
+- existing/migrated rows default to `GM`;
+- Slice 4 scenario uses `PLAYER`;
+- only the assigned Player may Roll a PLAYER-authority resolution;
+- GM cannot Roll a PLAYER-authority resolution;
+- no `EITHER` authority mode;
+- backend generates the authoritative d20;
+- Player Roll request contains no die or mutable resolution-contract fields;
+- exactly one raw roll may exist;
+- Slice 3 mechanical evidence remains immutable;
+- GM retains Finalize / Override / Correct;
+- Intent is explicitly Player-visible for PLAYER-authority requests;
+- `risk_visibility = GM_ONLY | PLAYER_VISIBLE`;
+- hidden Risk is never inferred to be Player-visible;
+- DC remains hidden from the Player;
+- success effect/claim remains hidden before disclosure;
+- dedicated Player-safe pending/current resolution projection;
+- no structured Target / Subject requirement;
+- Q-009 remains deferred;
+- no manual global Refresh as intended live flow;
+- bounded HTTP polling/re-fetch is sufficient for waiting states;
+- no WebSockets/SSE/broker/notification platform;
+- existing Contact Reveal remains independent of ActionResolution.
 
 ## Required API direction
 
-Keep:
+Keep the GM endpoints, including the existing GM Roll path for `roll_authority = GM`.
+
+Add the bounded Player workflow:
 
 ```text
-POST /campaigns/{campaign_id}/resolutions
-POST /campaigns/{campaign_id}/resolutions/{resolution_id}/roll
-GET  /campaigns/{campaign_id}/resolutions/{resolution_id}
-GET  /campaigns/{campaign_id}/resolutions/latest
+GET  /api/player/campaigns/{campaign_id}/resolutions/pending
+POST /api/player/campaigns/{campaign_id}/resolutions/{resolution_id}/roll
 ```
 
-Introduce:
+The Player Roll request body is empty and cannot supply:
+
+- die;
+- modifier;
+- DC;
+- actor;
+- mechanic;
+- Intent;
+- Risk;
+- final outcome;
+- any other resolution mutation.
+
+## Persistence direction
+
+Narrowly evolve the existing ActionResolution with:
 
 ```text
-POST /campaigns/{campaign_id}/resolutions/{resolution_id}/finalize
-POST /campaigns/{campaign_id}/resolutions/{resolution_id}/correct
+roll_authority: GM | PLAYER
+risk_visibility: GM_ONLY | PLAYER_VISIBLE
 ```
 
-The old `/apply` and `/close-failure` terminal mutation semantics must not remain alternative paths around the accepted adjudication contract.
+Do not add Request, Task, Invitation, Participant, Acknowledgement, Notification, Expiry, generic visibility rules or a second Resolution aggregate.
+
+## Authorization
+
+Player Roll authorization is backend-derived from:
+
+```text
+authenticated principal
+-> PLAYER CampaignMembership
+-> PlayerCharacterAssignment
+-> same campaign
+-> resolution actor == assigned Character
+-> roll_authority == PLAYER
+-> state == READY
+```
+
+Player cannot Finalize, Override or Correct.
+
+## Freshness
+
+Use immediate re-fetch after local mutation and bounded HTTP polling only while one side waits for the other.
+
+The accepted Product target is approximately 2 seconds for polling during waiting states.
 
 ## Acceptance criteria
 
-The normative acceptance criteria and test contract are defined in `docs/planning/slice-3-spec.md`.
+The normative acceptance criteria and test contract are defined in `docs/planning/slice-4-spec.md`.
 
-At minimum, implementation must prove end-to-end:
+At minimum implementation must prove:
 
-- normal mechanical SUCCESS -> Finalize SUCCESS;
-- mechanical FAILURE -> Override -> Finalize SUCCESS;
-- mechanical SUCCESS -> Override -> Finalize FAILURE;
-- finalized FAILURE -> Correct -> SUCCESS;
-- finalized SUCCESS -> Correct -> FAILURE after disclosure while retaining CharacterKnowledge;
-- immutable mechanical evidence across Finalize/Correct;
-- append-only finalization/correction history;
-- GM-only mutations;
-- Player-safe finalized-resolution projection;
-- reload persistence;
-- idempotency/concurrency behavior;
-- migration from legacy Slice-1 ActionResolution rows;
-- Slice 2 Contact Reveal remains independent of ActionResolution.
+- assigned Player sees the safe pending request;
+- GM_ONLY Risk, DC and success claim do not leak;
+- PLAYER_VISIBLE Risk appears;
+- Player triggers one backend-authoritative Roll;
+- duplicate/concurrent Player Roll produces one raw roll;
+- Player cannot Roll GM-authority resolution;
+- GM cannot Roll PLAYER-authority resolution;
+- Slice 3 Finalize/Override/Correct remains intact;
+- both override directions remain valid;
+- Player/GM observe request, roll result and final outcome without global manual Refresh;
+- campaign isolation and Player assignment remain server-authoritative;
+- migration defaults existing rows to GM / GM_ONLY.
 
-## Explicit Slice 3 exclusions
+## Explicit Slice 4 exclusions
 
-- generic resolution engine;
-- generic Resolution aggregate for hypothetical mechanics;
-- generic Adjudication aggregate/table;
-- generic workflow/state-machine framework;
-- generic undo/change-set framework;
-- arbitrary rollback;
-- generic compensation framework;
-- generic consequence/effect engine;
-- Rule Effect DSL;
-- event sourcing;
-- combat/encounter system;
-- Player-side rolling;
-- collaborative/group actions;
-- realtime/WebSockets/SSE;
-- rerolls;
-- crits;
-- degrees of success;
+- multiple Players in one resolution;
+- lead/assist;
+- roll aggregation;
 - opposed rolls;
-- advantage/disadvantage expansion;
-- mechanical repair UI;
-- full Player resolution-history browser;
-- Player-visible DC;
-- Player-visible GM reasons;
-- generic Scene/Session;
+- Player-authored resolutions;
+- Player Finalize/Override/Correct;
+- client-generated authoritative dice;
+- physical-dice verification;
+- request decline/acceptance;
+- request expiry;
+- generic Request/Task/Invitation framework;
+- participant/acknowledgement tables;
+- notifications platform;
+- WebSockets/SSE;
 - broker/worker;
-- microservices;
-- a second D20 mechanic introduced only for generality.
+- generic realtime infrastructure;
+- generic visibility/ACL framework;
+- universal Target / Subject;
+- target_entity_id;
+- generic ActionResolution engine;
+- combat;
+- rerolls;
+- configurable Player DC visibility.
 
 ## Deferred questions
 
 Only genuinely deferred questions remain in `docs/planning/open-questions.md`.
 
-Deferred items are non-normative and must not be inferred as accepted Slice 3 requirements.
+Deferred items are non-normative and must not be inferred as accepted Slice 4 requirements.

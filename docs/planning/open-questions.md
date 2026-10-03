@@ -4,7 +4,7 @@ Questions requiring future cross-domain arbitration are recorded here.
 
 Every item in this file is **OPEN — DEFERRED** and therefore non-normative until a future accepted slice or explicit decision resolves it.
 
-Resolved Slice 3 decisions — including binary Override in both directions, correction-by-supersession, required correction reason, optional override reason, Player resolution visibility without DC, and narrow evolution of the existing ActionResolution — do **not** belong here.
+Resolved Slice 3 and Slice 4 decisions do **not** belong here. This includes binary Override in both directions, correction-by-supersession, Player-side Roll for explicitly PLAYER-authority resolutions, backend-authoritative randomness, bounded polling for Slice 4 waiting states, explicit Risk visibility, hidden DC for Slice 4, and narrow evolution of the existing ActionResolution.
 
 ## Format
 
@@ -59,9 +59,9 @@ Resolved Slice 3 decisions — including binary Override in both directions, cor
 
 **Owner:** Product / UX / Architecture  
 **Affected domains:** Product, UX, Architecture  
-**Context:** Slice 2 and Slice 3 do not establish a realtime transport requirement. Refresh/re-fetch or bounded polling remains sufficient for their accepted workflows. Future collaborative/live workflows may create a stronger freshness requirement.  
-**Options:** manual refresh; polling; SSE; WebSockets; another bounded push mechanism.  
-**Decision required:** when a future accepted live-play workflow demonstrates that request/response or refresh materially harms usability.  
+**Context:** Slice 4 accepts immediate re-fetch plus bounded HTTP polling (approximately 2 seconds while waiting) for its one-Player live roll workflow and explicitly does not require push transport. A future workflow may still demonstrate that polling is insufficient.  
+**Options:** retain bounded polling; SSE; WebSockets; another bounded push mechanism.  
+**Decision required:** only when a future accepted live-play workflow demonstrates measured usability or freshness requirements that Slice 4 polling cannot satisfy.  
 **Status:** OPEN — DEFERRED
 
 ### Q-006 — Contact/entity authoring lifecycle
@@ -77,7 +77,7 @@ Resolved Slice 3 decisions — including binary Override in both directions, cor
 
 **Owner:** Product / Game Design / UX  
 **Affected domains:** Product, Game Design, UX, Security  
-**Context:** Slice 3 explicitly keeps DC hidden from the Player while exposing raw roll, modifier, total, mechanical result and final outcome. That decision is normative for Slice 3 only and does not establish a universal hidden-DC rule for all future mechanics.  
+**Context:** Slice 3 and Slice 4 both keep DC hidden from the Player while exposing the accepted mechanical/result information for their workflows. This remains normative for those slices only and does not establish a universal hidden-DC rule for all future mechanics.  
 **Options:** keep DC hidden by default; expose DC for specific mechanics/workflows; configurable table-style policy if later justified.  
 **Decision required:** only when a future accepted mechanic or Player workflow benefits from explicit DC visibility.  
 **Status:** OPEN — DEFERRED

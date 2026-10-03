@@ -1,14 +1,14 @@
-# Slice 4 Proposed Specification — GM Requests a Roll, Player Rolls, GM Adjudicates
+# Slice 4 Specification — GM Requests a Roll, Player Rolls, GM Adjudicates
 
-**Status:** PROPOSED — READY FOR HUMAN ACCEPTANCE  
+**Status:** ACCEPTED  
 **Owner:** Product Lead  
 **Selection:** Candidate A from `docs/planning/slice-4-candidates.md`  
-**Implementation authorization:** NO  
-**Current-slice impact:** NONE until explicit Human acceptance
+**Implementation authorization:** YES after merge of this PR  
+**Accepted:** 2026-10-03
 
-This specification consolidates the completed Game Design, UX and Architecture reviews of PR #17.
+This specification consolidates the completed Game Design, UX and Architecture reviews of PR #17 and was explicitly accepted by the Human Project Owner on 2026-10-03.
 
-It does **not** mark Slice 4 as ACCEPTED.
+After this PR is merged to `main`, this document is the normative Slice 4 contract and implementation may begin on a separate Architecture branch.
 
 ---
 
@@ -900,19 +900,15 @@ The three domain reviews converge on a bounded contract, and the remaining choic
 
 ---
 
-# 25. Acceptance gate
+# 25. Implementation gate
 
-This specification is:
+**Slice 4 is ACCEPTED.**
 
-**READY FOR HUMAN ACCEPTANCE**
+Implementation remains blocked only until this normative PR is merged to `main`.
 
-It is not yet ACCEPTED.
+After merge:
 
-Until explicit Human acceptance:
-
-- do not modify `docs/planning/current-slice.md`;
-- do not add an ACCEPTED Slice 4 decision;
-- do not start implementation;
-- do not merge PR #17 as implementation authorization.
-
-After Human acceptance, Product may finalize the normative planning documents and mark the PR READY TO MERGE.
+- `docs/planning/current-slice.md` identifies Slice 4 as the current accepted slice;
+- `docs/planning/decision-log.md` records D-008 as ACCEPTED;
+- implementation may begin on a separate short-lived Architecture branch;
+- all explicit exclusions and security constraints in this specification remain binding.
