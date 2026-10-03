@@ -35,6 +35,7 @@ async function prepareScenario(
   browser: Browser,
   label: string,
   riskVisibility: "GM_ONLY" | "PLAYER_VISIBLE",
+  createViaUi = true,
 ): Promise<Scenario> {
   const id = suffix();
   const playerName = `s4-player-${label}-${id}`;
@@ -99,14 +100,14 @@ async function prepareScenario(
     { name: "Globox", slicing_modifier: 2 },
     201,
   );
-  await jsonRequest(
+  const location = await jsonRequest<{ id: string }>(
     gmContext,
     "POST",
     `/api/campaigns/${campaign.id}/locations`,
     { name: "Imperial Cargo Terminal" },
     201,
   );
-  await jsonRequest(
+  const fragment = await jsonRequest<{ id: string }>(
     gmContext,
     "POST",
     `/api/campaigns/${campaign.id}/knowledge-fragments`,
@@ -121,30 +122,54 @@ async function prepareScenario(
     204,
   );
 
-  // Both principals are already in their campaign workspaces before the GM creates
-  // the Player-roll request. This is the accepted Slice 4 initial state.
-  await Promise.all([gmPage.goto("/"), playerPage.goto("/")]);
-  await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
+  if (createViaUi) {
+    // Live-path acceptance: both principals are already in their campaign workspaces
+    // before the GM creates the request, so Player discovery is proven by polling.
+    await Promise.all([gmPage.goto("/"), playerPage.goto("/")]);
+    await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
 
-  const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
-  await expect(
-    resolution.getByRole("button", { name: "Create pre-bound resolution" }),
-  ).toBeEnabled();
+    const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
+    await expect(
+      resolution.getByRole("button", { name: "Create pre-bound resolution" }),
+    ).toBeEnabled();
 
-  console.log("S4_STEP: configure-resolution");
-  await resolution.getByLabel("Roll authority").selectOption("PLAYER");
-  await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
-  await resolution.getByLabel("Intent").fill(intent);
-  await resolution.getByLabel("Risk", { exact: true }).fill(
-    riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
-  );
-  await resolution.locator('input[name="dc"]').fill("100");
+    console.log("S4_STEP: configure-resolution");
+    await resolution.getByLabel("Roll authority").selectOption("PLAYER");
+    await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
+    await resolution.getByLabel("Intent").fill(intent);
+    await resolution.getByLabel("Risk", { exact: true }).fill(
+      riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
+    );
+    await resolution.locator('input[name="dc"]').fill("100");
 
-  console.log("S4_STEP: submit-resolution");
-  await resolution.getByRole("button", { name: "Create pre-bound resolution" }).click();
-  await expect(
-    gmPage.getByRole("region", { name: "Current resolution" }),
-  ).toContainText("Waiting for Player Roll");
+    console.log("S4_STEP: submit-resolution");
+    await resolution.getByRole("button", { name: "Create pre-bound resolution" }).click();
+    await expect(
+      gmPage.getByRole("region", { name: "Current resolution" }),
+    ).toContainText("Waiting for Player Roll");
+  } else {
+    // Security-path fixture: creation UI is already covered above. Create the same
+    // accepted contract through the existing GM API, then test only Player-safe UI.
+    await jsonRequest(
+      gmContext,
+      "POST",
+      `/api/campaigns/${campaign.id}/resolutions`,
+      {
+        actor_character_id: character.id,
+        context_location_id: location.id,
+        intent,
+        risk: riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
+        roll_authority: "PLAYER",
+        risk_visibility: riskVisibility,
+        dc: 100,
+        success_recipient_character_id: character.id,
+        success_fragment_id: fragment.id,
+      },
+      201,
+    );
+    await Promise.all([gmPage.goto("/"), playerPage.goto("/")]);
+    await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
+  }
 
   return { gmContext, playerContext, gmPage, playerPage };
 }
@@ -202,7 +227,7 @@ test("Player rolls a GM request and both sides converge through polling without 
 
 test("GM-only Risk, DC and success claim stay hidden and Player has no GM mutation controls", async ({ browser }) => {
   test.setTimeout(120_000);
-  const scenario = await prepareScenario(browser, "hidden", "GM_ONLY");
+  const scenario = await prepareScenario(browser, "hidden", "GM_ONLY", false);
   try {
     const pending = scenario.playerPage.getByRole("region", { name: "Pending roll request" });
     await expect(pending).toBeVisible({ timeout: 7000 });
