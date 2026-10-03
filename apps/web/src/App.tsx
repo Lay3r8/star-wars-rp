@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "./api";
 import ContactWorkspace from "./ContactWorkspace";
+import PlayerResolutionPanel from "./PlayerResolutionPanel";
+import ResolutionWorkspace from "./ResolutionWorkspace";
 
 type Principal = { id: string; username: string };
 type Campaign = { id: string; name: string; role: "GM" | "PLAYER" };
@@ -15,28 +17,6 @@ type Member = {
 type Character = { id: string; name: string; slicing_modifier: number };
 type Location = { id: string; name: string };
 type Fragment = { id: string; claim_text: string; gm_veracity: "TRUE" | "FALSE" | "UNKNOWN" };
-type Resolution = {
-  id: string;
-  campaign_id: string;
-  actor_character_id: string;
-  context_location_id: string;
-  intent: string;
-  risk: string;
-  mechanic: string;
-  dc: number;
-  resolved_modifier: number;
-  state: string;
-  natural_roll: number | null;
-  total: number | null;
-  outcome: "SUCCESS" | "FAILURE" | null;
-  failure_adjudication: string | null;
-  success_preview: {
-    recipient_character_id: string;
-    recipient_name: string;
-    fragment_id: string;
-    claim_text: string;
-  };
-};
 type HistoryItem = {
   id: string;
   event_type: string;
@@ -102,12 +82,14 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (p: Principal) => vo
 
 function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
   const [projection, setProjection] = useState<PlayerProjection | null>(null);
+  const [resolutionRefreshKey, setResolutionRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
       setProjection(await api<PlayerProjection>(`/api/player/campaigns/${campaign.id}/character`));
+      setResolutionRefreshKey((value) => value + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load player projection");
     }
@@ -136,6 +118,7 @@ function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
               <ul>{projection.knowledge.map((item) => <li key={item.fragment_id}>{item.claim_text}</li>)}</ul>
             )}
           </div>
+          <PlayerResolutionPanel campaignId={campaign.id} refreshKey={resolutionRefreshKey} />
         </>
       )}
     </section>
@@ -148,27 +131,35 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [resolution, setResolution] = useState<Resolution | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [m, c, l, f, h, r] = await Promise.all([
+      const [m, c, l, f, h] = await Promise.all([
         api<Member[]>(`/api/campaigns/${campaign.id}/members`),
         api<Character[]>(`/api/campaigns/${campaign.id}/characters`),
         api<Location[]>(`/api/campaigns/${campaign.id}/locations`),
         api<Fragment[]>(`/api/campaigns/${campaign.id}/knowledge-fragments`),
         api<HistoryItem[]>(`/api/campaigns/${campaign.id}/history`),
-        api<Resolution | null>(`/api/campaigns/${campaign.id}/resolutions/latest`),
       ]);
-      setMembers(m); setCharacters(c); setLocations(l); setFragments(f); setHistory(h); setResolution(r);
+      setMembers(m); setCharacters(c); setLocations(l); setFragments(f); setHistory(h);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load campaign");
     }
   }, [campaign.id]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const refreshFragments = useCallback(async () => {
+    try {
+      setFragments(
+        await api<Fragment[]>(`/api/campaigns/${campaign.id}/knowledge-fragments`),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not refresh knowledge fragments");
+    }
+  }, [campaign.id]);
 
   async function run(action: () => Promise<unknown>) {
     setError(null);
@@ -181,46 +172,6 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
   }
 
   const players = members.filter((member) => member.role === "PLAYER");
-  const defaultActor = characters[0]?.id ?? "";
-  const defaultLocation = locations[0]?.id ?? "";
-  const defaultFragment = fragments[0]?.id ?? "";
-  const readyForResolution = Boolean(defaultActor && defaultLocation && defaultFragment && players.some((p) => p.assigned_character_id === defaultActor));
-
-  async function createResolution(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const actor = String(data.get("actor") || defaultActor);
-    const location = String(data.get("location") || defaultLocation);
-    const fragment = String(data.get("fragment") || defaultFragment);
-    const created = await api<Resolution>(`/api/campaigns/${campaign.id}/resolutions`, {
-      method: "POST",
-      body: JSON.stringify({
-        actor_character_id: actor,
-        context_location_id: location,
-        intent: data.get("intent"),
-        risk: data.get("risk"),
-        dc: Number(data.get("dc")),
-        success_recipient_character_id: actor,
-        success_fragment_id: fragment,
-      }),
-    });
-    setResolution(created);
-  }
-
-  async function resolutionAction(path: string, body?: unknown) {
-    if (!resolution) return;
-    try {
-      const updated = await api<Resolution>(
-        `/api/campaigns/${campaign.id}/resolutions/${resolution.id}/${path}`,
-        { method: "POST", body: body ? JSON.stringify(body) : undefined },
-      );
-      setResolution(updated);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Resolution action failed");
-    }
-  }
-
   return (
     <section className="workspace">
       <div className="workspace-header">
@@ -229,7 +180,11 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
       </div>
       <ErrorBox error={error} />
 
-      <ContactWorkspace campaignId={campaign.id} locations={locations} />
+      <ContactWorkspace
+        campaignId={campaign.id}
+        locations={locations}
+        onKnowledgeChanged={refreshFragments}
+      />
 
       <details className="legacy-setup">
         <summary>Slice 1 proof setup</summary>
@@ -303,71 +258,18 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
         </form>
       </div>
 
-      <form className="panel resolution-panel" onSubmit={(e) => { void createResolution(e); }}>
-        <p className="eyebrow">Live resolution</p>
-        <h3>Slice the terminal</h3>
-        <p className="muted">Roll only when the outcome is uncertain, meaningful risk exists, and success and failure are both fictionally possible.</p>
+      </div>
+      </details>
 
-        {characters.length > 1 ? (
-          <label>Actor<select name="actor" defaultValue={defaultActor}>{characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-        ) : <p>Actor: <strong>{characters[0]?.name ?? "Create a character"}</strong></p>}
-        {locations.length > 1 ? (
-          <label>Context<select name="location" defaultValue={defaultLocation}>{locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
-        ) : <p>Context: <strong>{locations[0]?.name ?? "Create a location"}</strong></p>}
-        {fragments.length > 1 ? (
-          <label>Success reveal<select name="fragment" defaultValue={defaultFragment}>{fragments.map((f) => <option key={f.id} value={f.id}>{f.claim_text}</option>)}</select></label>
-        ) : <p>Success reveal: <strong>{fragments[0]?.claim_text ?? "Create a hidden claim"}</strong></p>}
-
-        <label>Intent<textarea name="intent" defaultValue="Discover where the confiscated shipment was transferred." required /></label>
-        <label>Risk<textarea name="risk" defaultValue="On failure, Imperial security notices the intrusion." required /></label>
-        <label>DC<input name="dc" type="number" defaultValue="10" required /></label>
-        <button disabled={!readyForResolution}>Create pre-bound resolution</button>
-      </form>
-
-      {resolution && (
-        <section className="panel resolution-panel">
-          <h3>Resolution</h3>
-          <dl>
-            <dt>State</dt><dd>{resolution.state}</dd>
-            <dt>Intent</dt><dd>{resolution.intent}</dd>
-            <dt>Risk</dt><dd>{resolution.risk}</dd>
-            <dt>Check</dt><dd>d20 {resolution.resolved_modifier >= 0 ? "+" : ""}{resolution.resolved_modifier} vs DC {resolution.dc}</dd>
-            <dt>Success</dt><dd>Reveal “{resolution.success_preview.claim_text}” to {resolution.success_preview.recipient_name}</dd>
-          </dl>
-
-          {resolution.state === "READY" && <button onClick={() => void resolutionAction("roll")}>Roll</button>}
-          {resolution.natural_roll !== null && <p className="result">d20 {resolution.natural_roll} → total {resolution.total}: <strong>{resolution.outcome}</strong></p>}
-
-          {resolution.state === "SUCCESS_PENDING_APPLY" && (
-            <div className="apply-box">
-              <p>Apply will reveal exactly:</p>
-              <blockquote>{resolution.success_preview.claim_text}</blockquote>
-              <p>Recipient: <strong>{resolution.success_preview.recipient_name}</strong></p>
-              <button onClick={() => void resolutionAction("apply")}>Apply reveal</button>
-            </div>
-          )}
-
-          {resolution.state === "FAILURE_PENDING_CLOSE" && (
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const adjudication = String(new FormData(e.currentTarget).get("adjudication"));
-              void resolutionAction("close-failure", { adjudication });
-            }}>
-              <p>Declared Risk: <strong>{resolution.risk}</strong></p>
-              <label>Concrete adjudication<textarea name="adjudication" defaultValue="Imperial security logs the intrusion." required /></label>
-              <button>Close failed resolution</button>
-            </form>
-          )}
-
-          {resolution.state.startsWith("CLOSED_") && <p className="success">Resolution closed.</p>}
-          {resolution.state === "CLOSED_FAILURE" && (
-            <p className="muted">
-              Do not repeat the same roll under unchanged fiction. A new attempt requires a changed
-              approach or circumstance, assistance/equipment, additional time, or a new/increased cost or risk.
-            </p>
-          )}
-        </section>
-      )}
+      <ResolutionWorkspace
+        campaignId={campaign.id}
+        characters={characters}
+        locations={locations}
+        fragments={fragments}
+        assignedCharacterIds={players
+          .map((player) => player.assigned_character_id)
+          .filter((id): id is string => Boolean(id))}
+      />
 
       <section className="panel">
         <h3>Meaningful history</h3>
@@ -375,8 +277,6 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
           <ul>{history.map((item) => <li key={item.id}>{item.message}</li>)}</ul>
         )}
       </section>
-        </div>
-      </details>
     </section>
   );
 }

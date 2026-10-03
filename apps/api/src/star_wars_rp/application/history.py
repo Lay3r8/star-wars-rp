@@ -38,7 +38,7 @@ def campaign_history(
     events = db.scalars(
         select(DomainEvent)
         .where(DomainEvent.campaign_id == campaign_id)
-        .order_by(DomainEvent.occurred_at.desc())
+        .order_by(DomainEvent.occurred_at.desc(), DomainEvent.id.desc())
     ).all()
 
     result = []
@@ -51,6 +51,16 @@ def campaign_history(
             )
         elif event.event_type == "resolution.failure_closed":
             message = payload.get("adjudication", "Failed resolution closed")
+        elif event.event_type == "resolution.adjudication_finalized":
+            mechanical = payload.get("mechanical_result", "?")
+            final = payload.get("final_outcome", "?")
+            suffix = " (GM override)" if payload.get("overridden") else ""
+            message = f"Resolution finalized {final}; mechanical result was {mechanical}{suffix}."
+        elif event.event_type == "resolution.adjudication_corrected":
+            message = (
+                "Resolution corrected "
+                f"{payload.get('previous_final_outcome', '?')} -> {payload.get('final_outcome', '?')}."
+            )
         elif event.event_type == "contact.information_revealed":
             message = (
                 f"{payload.get('recipient_name', 'Character')} learned from "

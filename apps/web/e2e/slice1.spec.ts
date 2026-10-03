@@ -11,7 +11,31 @@ async function register(page: import("@playwright/test").Page, username: string)
   await expect(page.getByText(username)).toBeVisible();
 }
 
-test("success reveals only after GM Apply", async ({ browser }) => {
+async function setup(
+  page: import("@playwright/test").Page,
+  playerName: string,
+  campaignName: string,
+  dc: string,
+) {
+  await page.getByLabel("New campaign").fill(campaignName);
+  await page.getByRole("button", { name: "Create as GM" }).click();
+  await page.getByText("Slice 1 proof setup").click();
+
+  await page.getByLabel("Registered username").fill(playerName);
+  await page.getByRole("button", { name: "Add to campaign" }).click();
+  await expect(page.locator("ul.compact li", { hasText: playerName })).toBeVisible();
+
+  await page.getByLabel("Character name").fill("Kara Venn");
+  await page.getByRole("button", { name: "Create character" }).click();
+  await page.getByRole("button", { name: "Create location" }).click();
+  await page.getByRole("button", { name: "Create secret" }).click();
+  await page.getByRole("button", { name: "Assign" }).click();
+
+  await page.getByLabel("DC").fill(dc);
+  await page.getByRole("button", { name: "Create pre-bound resolution" }).click();
+}
+
+test("success roll waits for GM Finalize before disclosure", async ({ browser }) => {
   const id = suffix();
   const playerName = `player-${id}`;
   const gmName = `gm-${id}`;
@@ -24,52 +48,29 @@ test("success reveals only after GM Apply", async ({ browser }) => {
   const gmContext = await browser.newContext();
   const gmPage = await gmContext.newPage();
   await register(gmPage, gmName);
+  await setup(gmPage, playerName, `Campaign ${id}`, "1");
 
-  await gmPage.getByLabel("New campaign").fill(`Campaign ${id}`);
-  await gmPage.getByRole("button", { name: "Create as GM" }).click();
-  await gmPage.getByText("Slice 1 proof setup").click();
-
-  await gmPage.getByLabel("Registered username").fill(playerName);
-  await gmPage.getByRole("button", { name: "Add to campaign" }).click();
-  await expect(gmPage.locator("ul.compact li", { hasText: playerName })).toBeVisible();
-
-  await gmPage.getByLabel("Character name").fill("Kara Venn");
-  await gmPage.getByRole("button", { name: "Create character" }).click();
-  await expect(gmPage.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
-  await gmPage.getByRole("button", { name: "Create location" }).click();
-  await expect(gmPage.locator("details.legacy-setup").getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
-  await gmPage.getByRole("button", { name: "Create secret" }).click();
-  await expect(gmPage.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
-
-  await gmPage.getByRole("button", { name: "Assign" }).click();
-
-  await gmPage.getByLabel("DC").fill("1");
-  await gmPage.getByRole("button", { name: "Create pre-bound resolution" }).click();
   await gmPage.getByRole("button", { name: "Roll" }).click();
-  await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
-
-  await gmPage.reload();
-  await gmPage.getByText("Slice 1 proof setup").click();
-  await expect(gmPage.getByText("SUCCESS", { exact: true })).toBeVisible();
-  await expect(gmPage.getByRole("button", { name: "Apply reveal" })).toBeVisible();
+  const current = gmPage.getByRole("region", { name: "Current resolution" });
+  await expect(current.locator(".mechanical-evidence")).toContainText("Mechanical result: SUCCESS");
+  await expect(current.getByRole("button", { name: "Finalize Success" })).toBeVisible();
 
   await playerPage.getByLabel("Username").fill(playerName);
   await playerPage.getByLabel("Password").fill("password123");
   await playerPage.getByRole("button", { name: "Login" }).click();
   await expect(playerPage.getByText("No disclosed knowledge yet.")).toBeVisible();
+  await expect(playerPage.getByRole("region", { name: "Latest finalized resolution" })).toHaveCount(0);
 
-  await gmPage.getByRole("button", { name: "Apply reveal" }).click();
-  await gmPage.reload();
-  await gmPage.getByText("Slice 1 proof setup").click();
-  await expect(gmPage.getByText("Resolution closed.")).toBeVisible();
-  await playerPage.reload();
+  await current.getByRole("button", { name: "Finalize Success" }).click();
+  await playerPage.getByRole("button", { name: "Refresh" }).click();
   await expect(playerPage.getByText("The confiscated shipment was transferred to Dock 47.")).toBeVisible();
+  await expect(playerPage.getByRole("region", { name: "Latest finalized resolution" })).toContainText("Final outcome: SUCCESS");
 
   await gmContext.close();
   await playerContext.close();
 });
 
-test("failure ends with concrete GM adjudication and Close", async ({ page }) => {
+test("failure finalizes with the declared Risk as concrete consequence", async ({ page }) => {
   const id = suffix();
   const playerName = `player-fail-${id}`;
   const gmName = `gm-fail-${id}`;
@@ -77,37 +78,15 @@ test("failure ends with concrete GM adjudication and Close", async ({ page }) =>
   await register(page, playerName);
   await page.getByRole("button", { name: "Logout" }).click();
   await register(page, gmName);
+  await setup(page, playerName, `Failure ${id}`, "100");
 
-  await page.getByLabel("New campaign").fill(`Failure ${id}`);
-  await page.getByRole("button", { name: "Create as GM" }).click();
-  await page.getByText("Slice 1 proof setup").click();
-  await page.getByLabel("Registered username").fill(playerName);
-  await page.getByRole("button", { name: "Add to campaign" }).click();
-  await expect(page.locator("ul.compact li", { hasText: playerName })).toBeVisible();
-  await page.getByLabel("Character name").fill("Kara Venn");
-  await page.getByRole("button", { name: "Create character" }).click();
-  await expect(page.getByLabel("Character").locator("option")).toContainText(["Kara Venn"]);
-  await page.getByRole("button", { name: "Create location" }).click();
-  await expect(page.locator("details.legacy-setup").getByText("Imperial Cargo Terminal", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Create secret" }).click();
-  await expect(page.getByText("The confiscated shipment was transferred to Dock 47.", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Assign" }).click();
-
-  await page.getByLabel("DC").fill("100");
-  await page.getByRole("button", { name: "Create pre-bound resolution" }).click();
   await page.getByRole("button", { name: "Roll" }).click();
-  await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
+  const current = page.getByRole("region", { name: "Current resolution" });
+  await expect(current.locator(".mechanical-evidence")).toContainText("Mechanical result: FAILURE");
+  await current.getByRole("button", { name: "Finalize Failure" }).click();
+  await expect(current).toContainText("Final outcome: FAILURE");
+  await expect(current).toContainText("On failure, Imperial security notices the intrusion.");
 
   await page.reload();
-  await page.getByText("Slice 1 proof setup").click();
-  await expect(page.getByText("FAILURE", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Close failed resolution" })).toBeVisible();
-  await page.getByRole("button", { name: "Close failed resolution" }).click();
-  await expect(page.getByText("Resolution closed.")).toBeVisible();
-  await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
-  await expect(page.getByText("Imperial security logs the intrusion.")).toBeVisible();
-  await page.reload();
-  await page.getByText("Slice 1 proof setup").click();
-  await expect(page.getByText("Resolution closed.")).toBeVisible();
-  await expect(page.getByText("Do not repeat the same roll under unchanged fiction.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Current resolution" })).toContainText("Final outcome: FAILURE");
 });

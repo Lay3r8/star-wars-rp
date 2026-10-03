@@ -99,16 +99,32 @@ class ResolutionOut(BaseModel):
     mechanic: str
     dc: int
     resolved_modifier: int
-    state: str
+    state: Literal["READY", "AWAITING_ADJUDICATION", "FINALIZED"]
     natural_roll: int | None
     total: int | None
-    outcome: str | None
+    mechanical_result: Literal["SUCCESS", "FAILURE"] | None
+    final_outcome: Literal["SUCCESS", "FAILURE"] | None
     failure_adjudication: str | None
+    adjudication_reason: str | None
+    adjudicated_at: datetime | None
+    adjudication_revision: int
+    is_overridden: bool
+    is_corrected: bool
+    previous_final_outcome: Literal["SUCCESS", "FAILURE"] | None
     success_preview: SuccessPreview
 
 
-class CloseFailureRequest(BaseModel):
-    adjudication: str = Field(min_length=1, max_length=4000)
+class FinalizeResolutionRequest(BaseModel):
+    final_outcome: Literal["SUCCESS", "FAILURE"]
+    failure_adjudication: str | None = Field(default=None, max_length=4000)
+    reason: str | None = Field(default=None, max_length=2000)
+
+
+class CorrectResolutionRequest(BaseModel):
+    expected_adjudication_revision: int = Field(ge=1)
+    final_outcome: Literal["SUCCESS", "FAILURE"]
+    failure_adjudication: str | None = Field(default=None, max_length=4000)
+    correction_reason: str = Field(min_length=1, max_length=2000)
 
 
 class PlayerKnowledgeOut(BaseModel):
@@ -127,6 +143,18 @@ class PlayerProjectionOut(BaseModel):
     campaign_id: uuid.UUID
     character: PlayerCharacterOut
     knowledge: list[PlayerKnowledgeOut]
+
+
+class PlayerResolutionSummaryOut(BaseModel):
+    resolution_id: uuid.UUID
+    natural_roll: int
+    resolved_modifier: int
+    total: int
+    mechanical_result: Literal["SUCCESS", "FAILURE"]
+    final_outcome: Literal["SUCCESS", "FAILURE"]
+    is_overridden: bool
+    is_corrected: bool
+    previous_final_outcome: Literal["SUCCESS", "FAILURE"] | None
 
 
 class HistoryItemOut(BaseModel):

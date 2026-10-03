@@ -8,14 +8,16 @@ from star_wars_rp.errors import NotFound
 from star_wars_rp.modules.campaigns.models import PlayerCharacterAssignment
 from star_wars_rp.modules.characters.models import Character
 from star_wars_rp.modules.custom_d20.models import CustomD20CharacterProfile
+from star_wars_rp.modules.history.models import DomainEvent
 from star_wars_rp.modules.knowledge.models import CharacterKnowledge, KnowledgeFragment
+from star_wars_rp.modules.resolutions.models import ActionResolution
 
 
-def player_character_projection(
+def _player_assignment(
     db: Session,
     principal_id: uuid.UUID,
     campaign_id: uuid.UUID,
-) -> dict:
+) -> PlayerCharacterAssignment:
     require_membership(db, principal_id, campaign_id, ROLE_PLAYER)
     assignment = db.get(
         PlayerCharacterAssignment,
@@ -23,6 +25,15 @@ def player_character_projection(
     )
     if assignment is None:
         raise NotFound("No character assignment for Player")
+    return assignment
+
+
+def player_character_projection(
+    db: Session,
+    principal_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+) -> dict:
+    assignment = _player_assignment(db, principal_id, campaign_id)
 
     character = db.scalar(
         select(Character).where(
@@ -69,4 +80,53 @@ def player_character_projection(
             }
             for record, claim_text in knowledge_rows
         ],
+    }
+
+
+def player_resolution_projection(
+    db: Session,
+    principal_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+) -> dict | None:
+    assignment = _player_assignment(db, principal_id, campaign_id)
+
+    resolution = db.scalar(
+        select(ActionResolution)
+        .where(
+            ActionResolution.campaign_id == campaign_id,
+            ActionResolution.actor_character_id == assignment.character_id,
+        )
+        .order_by(ActionResolution.created_at.desc(), ActionResolution.id.desc())
+        .limit(1)
+    )
+    if resolution is None or resolution.state != "FINALIZED":
+        return None
+
+    previous_final_outcome = None
+    if resolution.adjudication_revision > 1:
+        correction = db.scalar(
+            select(DomainEvent)
+            .where(
+                DomainEvent.campaign_id == campaign_id,
+                DomainEvent.subject_id == resolution.id,
+                DomainEvent.event_type == "resolution.adjudication_corrected",
+            )
+            .order_by(DomainEvent.occurred_at.desc(), DomainEvent.id.desc())
+            .limit(1)
+        )
+        if correction is not None:
+            candidate = correction.payload.get("previous_final_outcome")
+            if candidate in {"SUCCESS", "FAILURE"}:
+                previous_final_outcome = candidate
+
+    return {
+        "resolution_id": resolution.id,
+        "natural_roll": resolution.natural_roll,
+        "resolved_modifier": resolution.resolved_modifier,
+        "total": resolution.total,
+        "mechanical_result": resolution.mechanical_result,
+        "final_outcome": resolution.final_outcome,
+        "is_overridden": resolution.final_outcome != resolution.mechanical_result,
+        "is_corrected": resolution.adjudication_revision > 1,
+        "previous_final_outcome": previous_final_outcome,
     }
