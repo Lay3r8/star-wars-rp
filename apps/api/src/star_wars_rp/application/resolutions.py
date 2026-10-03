@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from star_wars_rp.application.campaigns import ROLE_PLAYER, require_gm
+from star_wars_rp.application.campaigns import ROLE_PLAYER, require_gm, require_membership
 from star_wars_rp.application.history import append_domain_event
 from star_wars_rp.application.knowledge import make_character_aware
 from star_wars_rp.errors import Conflict, InvalidOperation, NotFound
@@ -24,6 +24,10 @@ AWAITING_ADJUDICATION = "AWAITING_ADJUDICATION"
 FINALIZED = "FINALIZED"
 SUCCESS = "SUCCESS"
 FAILURE = "FAILURE"
+ROLL_AUTHORITY_GM = "GM"
+ROLL_AUTHORITY_PLAYER = "PLAYER"
+RISK_VISIBILITY_GM_ONLY = "GM_ONLY"
+RISK_VISIBILITY_PLAYER_VISIBLE = "PLAYER_VISIBLE"
 
 
 def _resolution(
@@ -138,8 +142,14 @@ def create_resolution(
     dc: int,
     success_recipient_character_id: uuid.UUID,
     success_fragment_id: uuid.UUID,
+    roll_authority: str = ROLL_AUTHORITY_GM,
+    risk_visibility: str = RISK_VISIBILITY_GM_ONLY,
 ) -> ActionResolution:
     require_gm(db, gm_principal_id, campaign_id)
+    if roll_authority not in {ROLL_AUTHORITY_GM, ROLL_AUTHORITY_PLAYER}:
+        raise InvalidOperation("Roll authority must be GM or PLAYER")
+    if risk_visibility not in {RISK_VISIBILITY_GM_ONLY, RISK_VISIBILITY_PLAYER_VISIBLE}:
+        raise InvalidOperation("Risk visibility must be GM_ONLY or PLAYER_VISIBLE")
     profile = db.scalar(
         select(CustomD20CharacterProfile).where(
             CustomD20CharacterProfile.campaign_id == campaign_id,
@@ -155,6 +165,8 @@ def create_resolution(
         context_location_id=context_location_id,
         intent=intent.strip(),
         risk=risk.strip(),
+        roll_authority=roll_authority,
+        risk_visibility=risk_visibility,
         mechanic="slicing",
         dc=dc,
         resolved_modifier=profile.slicing_modifier,
@@ -179,6 +191,8 @@ def serialize_resolution(db: Session, resolution: ActionResolution) -> dict:
         "context_location_id": resolution.context_location_id,
         "intent": resolution.intent,
         "risk": resolution.risk,
+        "roll_authority": resolution.roll_authority,
+        "risk_visibility": resolution.risk_visibility,
         "mechanic": resolution.mechanic,
         "dc": resolution.dc,
         "resolved_modifier": resolution.resolved_modifier,
@@ -232,18 +246,10 @@ def get_latest_resolution(
     return serialize_resolution(db, resolution) if resolution is not None else None
 
 
-def roll_resolution(
-    db: Session,
-    gm_principal_id: uuid.UUID,
-    campaign_id: uuid.UUID,
-    resolution_id: uuid.UUID,
-) -> dict:
-    require_gm(db, gm_principal_id, campaign_id)
-    resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
-
+def _roll_once(db: Session, resolution: ActionResolution) -> ActionResolution:
     if resolution.state != READY:
         if resolution.natural_roll is not None:
-            return serialize_resolution(db, resolution)
+            return resolution
         raise Conflict("Resolution is not ready to roll")
 
     _validate_bound_references(db, resolution)
@@ -255,8 +261,47 @@ def roll_resolution(
     resolution.state = AWAITING_ADJUDICATION
     resolution.rolled_at = datetime.now(timezone.utc)
     db.commit()
-    return serialize_resolution(db, resolution)
+    return resolution
 
+
+def roll_resolution(
+    db: Session,
+    gm_principal_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+    resolution_id: uuid.UUID,
+) -> dict:
+    require_gm(db, gm_principal_id, campaign_id)
+    resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
+    if resolution.roll_authority != ROLL_AUTHORITY_GM:
+        raise Conflict("This resolution must be rolled by the assigned Player")
+    return serialize_resolution(db, _roll_once(db, resolution))
+
+
+def roll_resolution_for_player(
+    db: Session,
+    player_principal_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+    resolution_id: uuid.UUID,
+) -> ActionResolution:
+    require_membership(db, player_principal_id, campaign_id, ROLE_PLAYER)
+    assignment = db.get(
+        PlayerCharacterAssignment,
+        {
+            "campaign_id": campaign_id,
+            "player_principal_id": player_principal_id,
+        },
+    )
+    if assignment is None:
+        raise NotFound("No character assignment for Player")
+
+    resolution = _resolution(db, campaign_id, resolution_id, for_update=True)
+    if (
+        resolution.roll_authority != ROLL_AUTHORITY_PLAYER
+        or resolution.actor_character_id != assignment.character_id
+    ):
+        raise NotFound("Player roll request not found")
+
+    return _roll_once(db, resolution)
 
 def _normalize_reason(reason: str | None) -> str | None:
     if reason is None:

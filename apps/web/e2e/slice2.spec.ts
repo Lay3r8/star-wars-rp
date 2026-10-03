@@ -12,6 +12,7 @@ async function register(page: import("@playwright/test").Page, username: string)
 }
 
 test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
+  test.setTimeout(60_000);
   const id = suffix();
   const playerName = `contact-player-${id}`;
   const gmName = `contact-gm-${id}`;

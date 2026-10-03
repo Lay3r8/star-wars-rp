@@ -13,7 +13,15 @@ from star_wars_rp.modules.knowledge.models import CharacterKnowledge
 from star_wars_rp.modules.resolutions.models import ActionResolution
 
 
-def setup_campaign(gm: TestClient, player: TestClient, suffix: str, dc: int):
+def setup_campaign(
+    gm: TestClient,
+    player: TestClient,
+    suffix: str,
+    dc: int,
+    *,
+    roll_authority: str = "GM",
+    risk_visibility: str = "GM_ONLY",
+):
     player_info = register_and_login(player, f"player-{suffix}")
     gm_info = register_and_login(gm, f"gm-{suffix}")
 
@@ -58,6 +66,8 @@ def setup_campaign(gm: TestClient, player: TestClient, suffix: str, dc: int):
             "context_location_id": location["id"],
             "intent": "Discover where the confiscated shipment was transferred.",
             "risk": "On failure, Imperial security notices the intrusion.",
+            "roll_authority": roll_authority,
+            "risk_visibility": risk_visibility,
             "dc": dc,
             "success_recipient_character_id": character["id"],
             "success_fragment_id": fragment["id"],
@@ -162,8 +172,9 @@ def test_success_reveal_is_authorized_atomic_and_idempotent():
             "is_corrected",
             "previous_final_outcome",
         }
-        assert "dc" not in player_resolution.text
-        assert "adjudication_reason" not in player_resolution.text
+        player_resolution_body = player_resolution.json()
+        assert "dc" not in player_resolution_body
+        assert "adjudication_reason" not in player_resolution_body
 
         reloaded = gm.get(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}")
         assert reloaded.status_code == 200
