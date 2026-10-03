@@ -85,15 +85,19 @@ function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
   const [resolutionRefreshKey, setResolutionRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const refreshProjection = useCallback(async () => {
+    setProjection(await api<PlayerProjection>(`/api/player/campaigns/${campaign.id}/character`));
+  }, [campaign.id]);
+
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      setProjection(await api<PlayerProjection>(`/api/player/campaigns/${campaign.id}/character`));
+      await refreshProjection();
       setResolutionRefreshKey((value) => value + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load player projection");
     }
-  }, [campaign.id]);
+  }, [refreshProjection]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -118,7 +122,13 @@ function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
               <ul>{projection.knowledge.map((item) => <li key={item.fragment_id}>{item.claim_text}</li>)}</ul>
             )}
           </div>
-          <PlayerResolutionPanel campaignId={campaign.id} refreshKey={resolutionRefreshKey} />
+          <PlayerResolutionPanel
+            campaignId={campaign.id}
+            refreshKey={resolutionRefreshKey}
+            onFinalized={() => {
+              void refreshProjection();
+            }}
+          />
         </>
       )}
     </section>
