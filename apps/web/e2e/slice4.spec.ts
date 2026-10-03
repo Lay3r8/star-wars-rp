@@ -33,41 +33,56 @@ async function prepareScenario(
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
   playerPage.setDefaultTimeout(10_000);
+  console.log("S4_STEP: register-player");
   await register(playerPage, playerName);
+  console.log("S4_STEP: logout-player");
   await playerPage.getByRole("button", { name: "Logout" }).click();
 
   const gmContext = await browser.newContext();
   const gmPage = await gmContext.newPage();
   gmPage.setDefaultTimeout(10_000);
+  console.log("S4_STEP: register-gm");
   await register(gmPage, gmName);
 
+  console.log("S4_STEP: create-campaign");
   await gmPage.getByLabel("New campaign").fill(`Slice 4 ${label} ${id}`);
   await gmPage.getByRole("button", { name: "Create as GM" }).click();
   await gmPage.getByText("Slice 1 proof setup").click();
 
+  console.log("S4_STEP: add-player");
   await gmPage.getByLabel("Registered username").fill(playerName);
   await gmPage.getByRole("button", { name: "Add to campaign" }).click();
+  console.log("S4_STEP: create-character");
   await gmPage.getByLabel("Character name").fill("Globox");
   await gmPage.getByRole("button", { name: "Create character" }).click();
+  console.log("S4_STEP: create-location");
   await gmPage.getByRole("button", { name: "Create location" }).click();
+  console.log("S4_STEP: create-secret");
   await gmPage.getByRole("button", { name: "Create secret" }).click();
+  console.log("S4_STEP: assign-player");
   await gmPage.getByRole("button", { name: "Assign" }).click();
   await gmPage.getByText("Slice 1 proof setup").click();
 
   // Player is already in the workspace before the GM creates the request.
+  console.log("S4_STEP: login-player");
   await playerPage.getByLabel("Username").fill(playerName);
   await playerPage.getByLabel("Password").fill("password123");
   await playerPage.getByRole("button", { name: "Login" }).click();
   await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
 
+  console.log("S4_STEP: configure-resolution");
   const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
   await resolution.getByLabel("Roll authority").selectOption("PLAYER");
   await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
+  console.log("S4_STEP: fill-intent");
   await resolution.getByLabel("Intent").fill(intent);
+  console.log("S4_STEP: fill-risk");
   await resolution.getByLabel("Risk", { exact: true }).fill(
     riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
   );
+  console.log("S4_STEP: fill-dc");
   await resolution.getByLabel("DC").fill("100");
+  console.log("S4_STEP: submit-resolution");
   await resolution.getByRole("button", { name: "Create pre-bound resolution" }).click();
 
   return { gmContext, playerContext, gmPage, playerPage };
