@@ -502,13 +502,349 @@ Candidate A now tests the next narrow authority boundary:
 
 ---
 
-# 8. Selection gate
+# 8. Cross-domain review consolidation
 
-After the parallel Game Design, UX and Architecture reviews:
+The parallel Game Design, UX and Architecture reviews are complete.
 
-1. Product consolidates only the contracts needed for Candidate A.
-2. A second review loop is created only if one domain raises a material dependency affecting another domain contract.
-3. Product writes the exact Slice 4 specification.
-4. Human acceptance is required before Slice 4 becomes ACCEPTED.
-5. `docs/planning/current-slice.md` remains on Slice 3 until that acceptance.
-6. No implementation begins before the accepted Slice 4 contract is merged to `main`.
+No material disagreement requires a second review loop.
+
+## FACT
+
+All three domains agree that Candidate A can remain a bounded extension of the existing slicing ActionResolution:
+
+- one GM-authored resolution;
+- one assigned Player;
+- backend-authoritative d20;
+- Player triggers the single Roll;
+- immutable mechanical result;
+- GM retains Finalize / Override / Correct;
+- no group-action semantics;
+- no generic request/task model;
+- no mandatory realtime transport;
+- no universal Target / Subject schema.
+
+## EXPERT POSITION
+
+### Game Design
+
+Candidate A **NEEDS SMALL CONTRACT**.
+
+Key position:
+
+- Player Roll authority means only permission to trigger the one authoritative roll for an already-defined eligible resolution;
+- Player does not gain authority over actor, mechanic, modifier, DC, success effect, hidden stakes or adjudication;
+- visible stakes must be fictionally scoped;
+- hidden GM consequences may remain hidden;
+- multi-Player/group semantics remain deferred.
+
+### UX
+
+Candidate A **NEEDS SMALL CONTRACT**.
+
+Key position:
+
+- one actionable pending-roll card is enough;
+- common Player path should be essentially request appears -> Roll;
+- no Accept Request / Confirm Roll / Submit Result chain;
+- manual global refresh should not be the intended live UX;
+- bounded polling/re-fetch is sufficient initially;
+- no notification center or generic request inbox;
+- structured Target / Subject is not required for this slice if the human-readable request is clear.
+
+### Architecture
+
+Candidate A **NEEDS DOMAIN CONTRACT FIRST**, but no new platform prerequisite exists.
+
+Key position:
+
+- reuse the existing ActionResolution;
+- READY may already be enough to represent a pending Player roll request;
+- new persistence may be zero or one bounded roll-authority/request field only if GM-roll and Player-roll eligibility must coexist explicitly;
+- add a Player-safe pending resolution read model;
+- add a Player Roll command that accepts no die or mutable resolution fields;
+- reuse the existing row-locked one-shot Roll transaction;
+- no participant/request/expiry/notification tables;
+- no WebSockets/SSE requirement.
+
+## PRODUCT IMPACT
+
+The reviews strengthen, rather than reopen, the Human-selected direction.
+
+Candidate A should proceed to specification with the smallest contract possible.
+
+No second review loop is required unless specification work later uncovers a genuinely material dependency.
+
+---
+
+# 9. Human Arbitration Pack
+
+The credible options are reduced to three.
+
+## OPTION A — GM Requests a Roll, Player Rolls, GM Adjudicates
+
+### PRODUCT VALUE
+
+High. First direct Player mechanical agency while preserving established GM authority.
+
+### GAME DESIGN READINESS
+
+High; only a small contract remains.
+
+### UX READINESS
+
+High; one compact request/roll flow is sufficient.
+
+### ARCHITECTURE READINESS
+
+High after freezing roll-authority semantics; likely zero or one small schema change.
+
+### SECURITY IMPACT
+
+High sensitivity but bounded and well understood: Player may trigger only the eligible Roll for their assigned Character.
+
+### REUSE
+
+Very high; strongest literal reuse of Slices 1-3.
+
+### NEW COMPLEXITY
+
+Moderate.
+
+### WHAT WE LEARN
+
+- value of Player-side mechanical agency;
+- minimum pre-roll Player context/stakes;
+- shared GM/Player timing;
+- whether bounded polling is enough;
+- whether the current ActionResolution supports a live two-principal workflow cleanly.
+
+### MAIN RISKS
+
+- generic request/task creep;
+- premature realtime infrastructure;
+- hidden-stakes leakage;
+- GM/Player concurrent Roll race;
+- expanding into true collaborative rolling.
+
+### BLOCKERS
+
+No cross-domain blocker.
+
+Before implementation, specification must freeze:
+
+- exact Player-safe request fields;
+- whether GM may also trigger Roll;
+- handling of already-rolled/stale requests;
+- bounded freshness behavior.
+
+### EXPLICIT DEFERRALS
+
+- multiple Players;
+- lead/assist;
+- aggregation;
+- opposed rolls;
+- decline/expiry unless later proven necessary;
+- notifications;
+- realtime push;
+- structured universal Target / Subject;
+- client-authoritative dice.
+
+### PRODUCT RECOMMENDATION
+
+**Preferred option.**
+
+It is the most natural continuation of Slice 3 and has the best ratio of new Product learning to implementation risk.
+
+---
+
+## OPTION B — Player Knowledge Library with Acquisition Context
+
+### PRODUCT VALUE
+
+High for continuity and investigations, but less breadth than Option A because knowledge/disclosure has already been central to previous slices.
+
+### GAME DESIGN READINESS
+
+Very high.
+
+Game Design considers it ready with:
+
+- AWARE retained;
+- contradictory claims allowed;
+- provenance optional/descriptive;
+- no-source knowledge valid;
+- no confidence/belief mechanics.
+
+### UX READINESS
+
+Very high.
+
+UX considers it ready with:
+
+- claim-first library;
+- simple search;
+- optional source/context;
+- no Quest or graph IA.
+
+### ARCHITECTURE READINESS
+
+Very high.
+
+Architecture considers it ready with low persistence cost and no new aggregate requirement.
+
+### SECURITY IMPACT
+
+High sensitivity around source/Location/resolution metadata, but explicit projection patterns already exist.
+
+### REUSE
+
+Very high.
+
+### NEW COMPLEXITY
+
+Low/moderate.
+
+### WHAT WE LEARN
+
+- whether Player knowledge becomes a genuinely useful play tool;
+- which provenance metadata matters;
+- how contradictory claims are understood;
+- whether optional acquisition context improves decision-making.
+
+### MAIN RISKS
+
+- becoming a lore archive rather than gameplay support;
+- over-modeling epistemology;
+- source leakage;
+- provenance bookkeeping.
+
+### BLOCKERS
+
+No major domain blocker.
+
+Need only freeze the small metadata set and Player visibility rules.
+
+### EXPLICIT DEFERRALS
+
+- Believed/Doubted;
+- confidence;
+- source reliability;
+- multi-hop provenance;
+- Quest grouping;
+- semantic/vector search;
+- contradiction inference.
+
+### PRODUCT RECOMMENDATION
+
+Strong fallback if the priority is lowest-risk Player utility rather than extending the live action loop.
+
+---
+
+## OPTION C — Personal-Scale Combat
+
+### PRODUCT VALUE
+
+Very high core-RPG value.
+
+### GAME DESIGN READINESS
+
+Low/moderate. Requires the largest new rules contract.
+
+### UX READINESS
+
+Conditional. UX contract is small, but cannot be finalized before the combat micro-contract and command ownership are fixed.
+
+### ARCHITECTURE READINESS
+
+Feasible but highest-cost option. Architecture considers it bounded if kept combat-specific.
+
+### SECURITY IMPACT
+
+Moderate/high, especially if Player-active actions are selected.
+
+### REUSE
+
+Good infrastructure reuse, less direct domain-model reuse than A or B.
+
+### NEW COMPLEXITY
+
+High.
+
+### WHAT WE LEARN
+
+- first actual conflict loop;
+- repeated-action usability;
+- health/damage/incapacitation;
+- encounter state;
+- mechanical target semantics;
+- whether non-grid cinematic combat is enough.
+
+### MAIN RISKS
+
+- scope explosion;
+- premature combat decisions;
+- bookkeeping-heavy UX;
+- generic Scene/effect/rules-engine creep;
+- longer delivery cycle.
+
+### BLOCKERS
+
+Substantial Game Design combat micro-contract before implementation.
+
+### EXPLICIT DEFERRALS
+
+- tactical grid;
+- movement;
+- reactions;
+- critical injuries;
+- full equipment;
+- Force/talents;
+- vehicles;
+- NPC AI;
+- generic Scene;
+- generic effect engine.
+
+### PRODUCT RECOMMENDATION
+
+Credible, but better after the Player-side roll boundary is proven.
+
+---
+
+# 10. Product recommendation
+
+## FACT
+
+Candidate A was already Human-selected for specification before the three specialist reviews.
+
+## EXPERT POSITION
+
+No specialist review identified a material contradiction with Candidate A.
+
+All three domains agree it can remain narrow and avoid new infrastructure.
+
+## PRODUCT RECOMMENDATION
+
+Proceed with **Option A — GM Requests a Roll, Player Rolls, GM Adjudicates**.
+
+Do not reopen the shortlist unless the Human Project Owner wants to change Product priority.
+
+## HUMAN DECISION
+
+The Human Project Owner should now either:
+
+- confirm Option A and authorize Product to write the Slice 4 specification; or
+- explicitly reopen the selection in favor of Option B or C.
+
+No option is ACCEPTED by this document.
+
+---
+
+# 11. Gate
+
+`docs/planning/current-slice.md` remains unchanged.
+
+No Slice 4 decision is ACCEPTED.
+
+No implementation is authorized.
+
+After Human confirmation of the selected option, Product may proceed directly to the Slice 4 specification using the consolidated specialist contracts above.
