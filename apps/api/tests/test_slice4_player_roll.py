@@ -179,6 +179,7 @@ def test_player_cannot_roll_gm_authority_or_another_characters_resolution():
         assert _player_roll(player, gm_authority).status_code == 404
 
         other = TestClient(__import__("star_wars_rp.main", fromlist=["app"]).app)
+        outsider = TestClient(__import__("star_wars_rp.main", fromlist=["app"]).app)
         try:
             other_info = register_and_login(other, "s4-other-player")
             add = gm.post(
@@ -186,15 +187,39 @@ def test_player_cannot_roll_gm_authority_or_another_characters_resolution():
                 json={"username": "s4-other-player"},
             )
             assert add.status_code == 201, add.text
-            assert other.get(
+            other_character = gm.post(
+                f"/api/campaigns/{gm_authority['campaign']['id']}/characters",
+                json={"name": "Other Character", "slicing_modifier": 0},
+            ).json()
+            assigned = gm.put(
+                f"/api/campaigns/{gm_authority['campaign']['id']}/player-assignment",
+                json={
+                    "player_principal_id": other_info["id"],
+                    "character_id": other_character["id"],
+                },
+            )
+            assert assigned.status_code == 204, assigned.text
+
+            # A different assigned Player gets no request and cannot roll this actor.
+            other_pending = other.get(
                 f"/api/player/campaigns/{gm_authority['campaign']['id']}/resolutions/pending"
-            ).status_code == 404
+            )
+            assert other_pending.status_code == 200
+            assert other_pending.json() is None
             assert other.post(
                 f"/api/player/campaigns/{gm_authority['campaign']['id']}/resolutions/{gm_authority['resolution']['id']}/roll"
             ).status_code == 404
-            assert other_info["id"] != gm_authority["player"]["id"]
+
+            register_and_login(outsider, "s4-outsider")
+            assert outsider.get(
+                f"/api/player/campaigns/{gm_authority['campaign']['id']}/resolutions/pending"
+            ).status_code == 403
+            assert outsider.post(
+                f"/api/player/campaigns/{gm_authority['campaign']['id']}/resolutions/{gm_authority['resolution']['id']}/roll"
+            ).status_code == 403
         finally:
             other.close()
+            outsider.close()
 
 
 def test_concurrent_player_roll_requests_persist_one_raw_roll():
