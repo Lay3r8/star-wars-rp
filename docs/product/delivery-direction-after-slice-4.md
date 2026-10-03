@@ -1,12 +1,15 @@
 # Product Delivery Direction After Slice 4
 
-**Status:** ACCEPTED — HUMAN PRODUCT DIRECTION  
+**Status:** ACCEPTED PRODUCT DIRECTION — FUTURE SELECTION INPUT — NOT AN IMPLEMENTATION CONTRACT  
 **Owner:** Human Project Owner / Product Lead  
-**Effective:** next slice-selection cycle after Slice 4 implementation merge
+**Effective:** next slice-selection cycle after Slice 4 implementation merge  
+**Implementation authorization:** NONE
 
 This document records durable Product/Engineering direction established after Human manual validation of Slice 4.
 
-It does not reopen Slice 4 and does not add requirements to PR #18.
+It does not reopen Slice 4, amend the ACCEPTED Slice 4 contract, or add requirements to PR #18.
+
+Nothing in this document is directly implementable merely because this Product direction is ACCEPTED. Subject semantics, persistence shapes, broader resolution generalization, and future playable capabilities must still be selected, reviewed, specified and explicitly accepted through the normal slice process before implementation.
 
 ---
 
@@ -83,15 +86,17 @@ In particular, do not precommit to:
 
 ## Status
 
-This direction raises the priority of existing Q-009.
+This direction raises the priority of existing Q-009 as a future selection input.
 
-It does not resolve Q-009.
+It does not resolve Q-009, define a Subject model, or authorize any schema/API/UI implementation.
 
 ---
 
 # 2. Larger vertical slices
 
 ## Product direction
+
+This is a future slice-selection principle, not authorization to broaden the current implementation automatically.
 
 Slices 1-4 intentionally de-risked narrow foundations.
 
@@ -141,6 +146,8 @@ It should ask:
 
 ## Principle
 
+This testing direction applies when Product and Architecture define test scope for future implementation slices. It does not retroactively amend accepted slice contracts and does not by itself authorize removing existing tests or weakening required security/invariant coverage.
+
 Automated tests remain required where they protect rules, invariants, authorization, security boundaries and meaningful integration behavior.
 
 During this rapidly evolving product phase, avoid spending disproportionate effort on exhaustive browser matrices or test-harness hardening that duplicates lower-level coverage.
@@ -176,6 +183,8 @@ Do not require by default:
 This does not justify ignoring deterministic product defects discovered by E2E.
 
 ## Human functional acceptance
+
+This is a future process gate, not an implementation task by itself.
 
 A Human functional test remains mandatory before merge of an implementation slice.
 
