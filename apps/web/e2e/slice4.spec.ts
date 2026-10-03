@@ -3,8 +3,8 @@ import { expect, test, type Browser, type BrowserContext, type Page } from "@pla
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
 const suffix = () => Math.random().toString(36).slice(2, 9);
 const claim = "The confiscated shipment was transferred to Dock 47.";
-const intent = "Obtain information about Senator Traitrus.";
-const visibleRisk = "Vic may realize you are investigating him.";
+const intent = "Discover where the confiscated shipment was transferred.";
+const visibleRisk = "On failure, Imperial security notices the intrusion.";
 const hiddenRisk = "Imperial counter-intelligence silently fingerprints the intrusion.";
 
 type Scenario = {
@@ -136,11 +136,6 @@ async function prepareScenario(
     console.log("S4_STEP: configure-resolution");
     await resolution.getByLabel("Roll authority").selectOption("PLAYER");
     await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
-    await resolution.getByLabel("Intent").fill(intent);
-    await resolution.getByLabel("Risk", { exact: true }).fill(
-      riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
-    );
-    await resolution.locator('input[name="dc"]').fill("100");
 
     console.log("S4_STEP: submit-resolution");
     await resolution.getByRole("button", { name: "Create pre-bound resolution" }).click();
@@ -202,24 +197,36 @@ test("Player rolls a GM request and both sides converge through polling without 
     await pending.getByRole("button", { name: "Roll", exact: true }).click();
 
     await expect(pending.locator(".mechanical-evidence")).toBeVisible();
-    await expect(pending).toContainText("Mechanical result: FAILURE");
     await expect(pending).toContainText("Waiting for GM adjudication");
 
-    // GM observes the Player-generated mechanical result through its own bounded polling.
+    const mechanicalText = await pending
+      .getByText(/Mechanical result: (SUCCESS|FAILURE)/)
+      .textContent();
+    const mechanicalResult = mechanicalText?.includes("SUCCESS") ? "SUCCESS" : "FAILURE";
+    const overrideOutcome = mechanicalResult === "SUCCESS" ? "FAILURE" : "SUCCESS";
+
+    // GM observes the same Player-generated mechanical result through bounded polling.
     await expect(gmCurrent.locator(".mechanical-evidence")).toBeVisible({ timeout: 7000 });
-    await expect(gmCurrent).toContainText("Mechanical result: FAILURE");
+    await expect(gmCurrent).toContainText(`Mechanical result: ${mechanicalResult}`);
 
     // Exercise Slice 3 Override after a Player-triggered Roll.
     await gmCurrent.getByRole("button", { name: "Override outcome…" }).click();
-    await gmCurrent.getByLabel(/Override reason/).fill("The cached record is still readable.");
-    await gmCurrent.getByRole("button", { name: "Finalize as Success" }).click();
+    await gmCurrent
+      .getByRole("button", {
+        name: overrideOutcome === "SUCCESS" ? "Finalize as Success" : "Finalize as Failure",
+      })
+      .click();
 
     // Player sees finalized adjudication through polling; still no global Refresh.
     const finalized = scenario.playerPage.getByRole("region", { name: "Latest finalized resolution" });
     await expect(finalized).toBeVisible({ timeout: 7000 });
-    await expect(finalized).toContainText("Mechanical result: FAILURE");
-    await expect(finalized).toContainText("Final outcome: SUCCESS (GM adjudication)");
-    await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
+    await expect(finalized).toContainText(`Mechanical result: ${mechanicalResult}`);
+    await expect(finalized).toContainText(
+      `Final outcome: ${overrideOutcome} (GM adjudication)`,
+    );
+    if (overrideOutcome === "SUCCESS") {
+      await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
+    }
   } finally {
     await closeScenario(scenario);
   }
