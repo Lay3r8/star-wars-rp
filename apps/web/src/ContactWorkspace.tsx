@@ -42,6 +42,7 @@ type RevealResult = {
 type Props = {
   campaignId: string;
   locations: Location[];
+  onKnowledgeChanged: () => Promise<void>;
 };
 
 type ContactForm = {
@@ -62,7 +63,11 @@ const emptyForm: ContactForm = {
   gmVeracity: "TRUE",
 };
 
-export default function ContactWorkspace({ campaignId, locations }: Props) {
+export default function ContactWorkspace({
+  campaignId,
+  locations,
+  onKnowledgeChanged,
+}: Props) {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "pending" | "success" | "error">("idle");
@@ -213,6 +218,7 @@ export default function ContactWorkspace({ campaignId, locations }: Props) {
       setSaveState("success");
       setSaveMessage(editingId ? "Contact changes saved." : "Contact saved.");
       setEditingId(summary.contact_id);
+      await onKnowledgeChanged();
       await performSearch(summary.name);
     } catch (error) {
       setSaveState("error");

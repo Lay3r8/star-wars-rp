@@ -151,6 +151,16 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const refreshFragments = useCallback(async () => {
+    try {
+      setFragments(
+        await api<Fragment[]>(`/api/campaigns/${campaign.id}/knowledge-fragments`),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not refresh knowledge fragments");
+    }
+  }, [campaign.id]);
+
   async function run(action: () => Promise<unknown>) {
     setError(null);
     try {
@@ -170,7 +180,11 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
       </div>
       <ErrorBox error={error} />
 
-      <ContactWorkspace campaignId={campaign.id} locations={locations} />
+      <ContactWorkspace
+        campaignId={campaign.id}
+        locations={locations}
+        onKnowledgeChanged={refreshFragments}
+      />
 
       <details className="legacy-setup">
         <summary>Slice 1 proof setup</summary>

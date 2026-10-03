@@ -15,7 +15,9 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
   const id = suffix();
   const playerName = `contact-player-${id}`;
   const gmName = `contact-gm-${id}`;
+  const existingClaim = "The confiscated shipment was transferred to Dock 47.";
   const claim = "A customs audit is scheduled for Dock 47 tomorrow at 06:00.";
+  const replacementClaim = "The customs audit was moved to Dock 52 tomorrow at 07:30.";
 
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
@@ -49,6 +51,12 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
       .locator("option"),
   ).toContainText(["Dock 47"]);
 
+  await gmPage.getByLabel("Player-visible claim").fill(existingClaim);
+  await gmPage.getByRole("button", { name: "Create secret" }).click();
+
+  const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
+  await expect(resolution.getByText(existingClaim, { exact: true })).toBeVisible();
+
   await gmPage.getByRole("button", { name: "Assign" }).click();
   await gmPage.getByText("Slice 1 proof setup").click();
 
@@ -61,12 +69,20 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
   await contacts.getByRole("button", { name: "Save Contact" }).click();
   await expect(contacts.getByText("Contact saved.")).toBeVisible();
 
-  // Edit accepted canonical state.
+  // Contact save must invalidate the parent fragment collection without a global Refresh/reload.
+  const successReveal = resolution.getByLabel("Success reveal");
+  await expect(successReveal.locator("option")).toContainText([existingClaim, claim]);
+
+  // Edit accepted canonical state and replace prepared information.
   await gmPage.getByRole("region", { name: "Contact summary" }).getByRole("button", { name: "Edit" }).click();
   await contacts.getByLabel("Role", { exact: true }).fill("Senior Imperial dock clerk and discreet informant");
   await contacts.getByLabel("GM note").fill("Now watches customs traffic closely.");
+  await contacts.getByLabel("Information this Contact knows").fill(replacementClaim);
   await contacts.getByRole("button", { name: "Save changes" }).click();
   await expect(contacts.getByText("Contact changes saved.")).toBeVisible();
+
+  // Replacing prepared information creates a new KnowledgeFragment; it must also appear immediately.
+  await expect(successReveal.locator("option")).toContainText([replacementClaim]);
 
   await gmPage.reload();
 
@@ -82,31 +98,31 @@ test("GM prepares, finds, edits and reveals a Contact", async ({ browser }) => {
   const summary = gmPage.getByRole("region", { name: "Contact summary" });
   await expect(summary.getByRole("heading", { name: "Nira Voss" })).toBeVisible();
   await expect(summary.getByText("Senior Imperial dock clerk and discreet informant", { exact: false })).toBeVisible();
-  await expect(summary.getByText(claim, { exact: true })).toBeVisible();
+  await expect(summary.getByText(replacementClaim, { exact: true })).toBeVisible();
 
   // Player sees no hidden prepared information before explicit Reveal.
   await playerPage.getByLabel("Username").fill(playerName);
   await playerPage.getByLabel("Password").fill("password123");
   await playerPage.getByRole("button", { name: "Login" }).click();
   await expect(playerPage.getByText("No disclosed knowledge yet.")).toBeVisible();
-  await expect(playerPage.getByText(claim, { exact: true })).toHaveCount(0);
+  await expect(playerPage.getByText(replacementClaim, { exact: true })).toHaveCount(0);
 
   await summary.getByRole("button", { name: "Reveal…" }).click();
   await expect(summary.getByText("Recipient:")).toBeVisible();
   await expect(summary.getByText("Ryn Tal", { exact: true })).toBeVisible();
-  await expect(summary.locator(".reveal-preview").getByText(claim, { exact: true })).toBeVisible();
+  await expect(summary.locator(".reveal-preview").getByText(replacementClaim, { exact: true })).toBeVisible();
   await summary.getByRole("button", { name: "Confirm Reveal" }).click();
   await expect(summary.getByText("Revealed to Ryn Tal.")).toBeVisible();
 
   await playerPage.reload();
-  await expect(playerPage.getByText(claim, { exact: true })).toBeVisible();
+  await expect(playerPage.getByText(replacementClaim, { exact: true })).toBeVisible();
 
   // Reload preserves both Contact and disclosure state.
   await gmPage.reload();
   const finalContacts = gmPage.getByRole("region", { name: "Contacts" });
   await finalContacts.getByLabel("Search name or role").fill("Nira");
   await finalContacts.getByRole("option", { name: /Nira Voss/ }).click();
-  await expect(gmPage.getByRole("region", { name: "Contact summary" }).getByText(claim, { exact: true })).toBeVisible();
+  await expect(gmPage.getByRole("region", { name: "Contact summary" }).getByText(replacementClaim, { exact: true })).toBeVisible();
 
   await gmContext.close();
   await playerContext.close();
