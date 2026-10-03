@@ -120,7 +120,7 @@ jobs:
           docker compose -f infra/compose.yaml --profile test run --rm e2e npm run test:e2e -- --reporter=line 2>&1 | tee /tmp/e2e.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            failure="$(grep -m1 -E 'e2e/[^ ]+\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log || true)"
+            failure="$(grep -E 'e2e/[^ ]+\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log | tail -n 1 || true)"
             locator="$(grep -m1 -E 'Locator:' /tmp/e2e.log || true)"
             error_line="$(grep -m1 -E 'Error:|TimeoutError:|strict mode violation' /tmp/e2e.log || true)"
             message="$(printf '%s %s %s' "$locator" "$error_line" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
