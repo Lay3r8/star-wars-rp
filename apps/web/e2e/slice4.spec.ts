@@ -32,11 +32,13 @@ async function prepareScenario(
 
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
+  playerPage.setDefaultTimeout(10_000);
   await register(playerPage, playerName);
   await playerPage.getByRole("button", { name: "Logout" }).click();
 
   const gmContext = await browser.newContext();
   const gmPage = await gmContext.newPage();
+  gmPage.setDefaultTimeout(10_000);
   await register(gmPage, gmName);
 
   await gmPage.getByLabel("New campaign").fill(`Slice 4 ${label} ${id}`);
