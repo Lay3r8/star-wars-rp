@@ -44,6 +44,8 @@ def create(
         body.dc,
         body.success_recipient_character_id,
         body.success_fragment_id,
+        body.roll_authority,
+        body.risk_visibility,
     )
     return serialize_resolution(db, resolution)
 

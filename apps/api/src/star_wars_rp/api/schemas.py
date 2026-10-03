@@ -77,6 +77,8 @@ class ResolutionCreate(BaseModel):
     context_location_id: uuid.UUID
     intent: str = Field(min_length=1, max_length=2000)
     risk: str = Field(min_length=1, max_length=2000)
+    roll_authority: Literal["GM", "PLAYER"] = "GM"
+    risk_visibility: Literal["GM_ONLY", "PLAYER_VISIBLE"] = "GM_ONLY"
     dc: int
     success_recipient_character_id: uuid.UUID
     success_fragment_id: uuid.UUID
@@ -96,6 +98,8 @@ class ResolutionOut(BaseModel):
     context_location_id: uuid.UUID
     intent: str
     risk: str
+    roll_authority: Literal["GM", "PLAYER"]
+    risk_visibility: Literal["GM_ONLY", "PLAYER_VISIBLE"]
     mechanic: str
     dc: int
     resolved_modifier: int
@@ -143,6 +147,22 @@ class PlayerProjectionOut(BaseModel):
     campaign_id: uuid.UUID
     character: PlayerCharacterOut
     knowledge: list[PlayerKnowledgeOut]
+
+
+class PlayerPendingResolutionOut(BaseModel):
+    resolution_id: uuid.UUID
+    actor_character_id: uuid.UUID
+    actor_name: str
+    mechanic: str
+    context_location_id: uuid.UUID
+    context_location_name: str
+    intent: str
+    known_risk: str | None = None
+    state: Literal["READY", "AWAITING_ADJUDICATION"]
+    natural_roll: int | None = None
+    resolved_modifier: int | None = None
+    total: int | None = None
+    mechanical_result: Literal["SUCCESS", "FAILURE"] | None = None
 
 
 class PlayerResolutionSummaryOut(BaseModel):

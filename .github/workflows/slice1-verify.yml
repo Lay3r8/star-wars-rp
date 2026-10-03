@@ -6,6 +6,7 @@ on:
       - ai/architecture/slice-1
       - ai/architecture/slice-2-contact
       - ai/architecture/slice-3-adjudication
+      - ai/architecture/slice-4-player-roll
   pull_request:
     branches:
       - main
@@ -119,10 +120,11 @@ jobs:
           docker compose -f infra/compose.yaml --profile test run --rm e2e npm run test:e2e -- --reporter=line 2>&1 | tee /tmp/e2e.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            failure="$(grep -m1 -E 'e2e/[^ ]+\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log || true)"
+            failure="$(grep -E 'e2e/[^ ]+\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log | tail -n 1 || true)"
+            marker="$(grep -E 'S4_STEP:' /tmp/e2e.log | tail -n 1 || true)"
             locator="$(grep -m1 -E 'Locator:' /tmp/e2e.log || true)"
             error_line="$(grep -m1 -E 'Error:|TimeoutError:|strict mode violation' /tmp/e2e.log || true)"
-            message="$(printf '%s %s %s' "$locator" "$error_line" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
+            message="$(printf '%s %s %s %s' "$marker" "$locator" "$error_line" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"
             if [ -z "$message" ]; then
               message="$(sed '/^[[:space:]]*$/d' /tmp/e2e.log | tail -n 1 | cut -c1-130)"
             fi

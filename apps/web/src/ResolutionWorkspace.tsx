@@ -14,6 +14,8 @@ type Resolution = {
   context_location_id: string;
   intent: string;
   risk: string;
+  roll_authority: "GM" | "PLAYER";
+  risk_visibility: "GM_ONLY" | "PLAYER_VISIBLE";
   mechanic: string;
   dc: number;
   resolved_modifier: number;
@@ -58,6 +60,7 @@ export default function ResolutionWorkspace({
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionOutcome, setCorrectionOutcome] = useState<"SUCCESS" | "FAILURE">("SUCCESS");
+  const [rollAuthority, setRollAuthority] = useState<"GM" | "PLAYER">("GM");
 
   const refresh = useCallback(async () => {
     try {
@@ -72,6 +75,14 @@ export default function ResolutionWorkspace({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (resolution?.state !== "READY" || resolution.roll_authority !== "PLAYER") return;
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [refresh, resolution?.id, resolution?.roll_authority, resolution?.state]);
 
   const defaultActor = characters[0]?.id ?? "";
   const defaultLocation = locations[0]?.id ?? "";
@@ -121,6 +132,8 @@ export default function ResolutionWorkspace({
           context_location_id: location,
           intent: data.get("intent"),
           risk: data.get("risk"),
+          roll_authority: data.get("roll_authority"),
+          risk_visibility: data.get("risk_visibility"),
           dc: Number(data.get("dc")),
           success_recipient_character_id: actor,
           success_fragment_id: fragment,
@@ -200,6 +213,35 @@ export default function ResolutionWorkspace({
         )}
 
         <label>
+          Roll authority
+          <select
+            name="roll_authority"
+            value={rollAuthority}
+            onChange={(event) =>
+              setRollAuthority(event.target.value as "GM" | "PLAYER")
+            }
+          >
+            <option value="GM">GM</option>
+            <option value="PLAYER">Player</option>
+          </select>
+        </label>
+
+        <label>
+          Risk visibility
+          <select name="risk_visibility" defaultValue="GM_ONLY">
+            <option value="GM_ONLY">GM only</option>
+            <option value="PLAYER_VISIBLE">Player visible</option>
+          </select>
+        </label>
+
+        {rollAuthority === "PLAYER" && (
+          <p className="muted" role="note">
+            Intent is Player-visible for a Player-roll request. Do not place hidden GM
+            information in Intent.
+          </p>
+        )}
+
+        <label>
           Intent
           <textarea
             name="intent"
@@ -232,7 +274,9 @@ export default function ResolutionWorkspace({
             </div>
             <span className="status-pill">
               {resolution.state === "READY"
-                ? "Ready"
+                ? resolution.roll_authority === "PLAYER"
+                  ? "Waiting for Player Roll"
+                  : "Ready"
                 : resolution.state === "AWAITING_ADJUDICATION"
                   ? "Awaiting GM adjudication"
                   : resolution.is_corrected
@@ -244,16 +288,24 @@ export default function ResolutionWorkspace({
           <dl>
             <dt>Intent</dt><dd>{resolution.intent}</dd>
             <dt>Risk</dt><dd>{resolution.risk}</dd>
+            <dt>Roll authority</dt><dd>{resolution.roll_authority}</dd>
+            <dt>Risk visibility</dt><dd>{resolution.risk_visibility}</dd>
             <dt>Check</dt>
             <dd>d20 {resolution.resolved_modifier >= 0 ? "+" : ""}{resolution.resolved_modifier} vs DC {resolution.dc}</dd>
             <dt>Success</dt>
             <dd>Reveal “{resolution.success_preview.claim_text}” to {resolution.success_preview.recipient_name}</dd>
           </dl>
 
-          {resolution.state === "READY" && (
+          {resolution.state === "READY" && resolution.roll_authority === "GM" && (
             <button disabled={busy} onClick={() => void mutate("roll")}>
               {busy ? "Rolling…" : "Roll"}
             </button>
+          )}
+
+          {resolution.state === "READY" && resolution.roll_authority === "PLAYER" && (
+            <p className="muted" role="status">
+              Waiting for the assigned Player to roll…
+            </p>
           )}
 
           {resolution.natural_roll !== null && (
