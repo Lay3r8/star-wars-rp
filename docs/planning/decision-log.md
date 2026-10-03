@@ -11,3 +11,4 @@ Cross-domain decisions and their current status.
 | D-005 | First vertical slice is `Slice the terminal, reveal the secret` as specified by the reviewed Kickoff Decision Pack | Product / Cross-domain | Accepted |
 | D-006 | Slice 2 is `Prep a Contact, Find Them Instantly, Use Them in Play` as specified in `docs/planning/slice-2-spec.md` | Product / Cross-domain | Accepted |
 | D-007 | Slice 3 is `Roll, Review and Adjudicate` as specified in `docs/planning/slice-3-spec.md` | Product / Cross-domain | Accepted |
+| D-008 | Slice 4 is `GM Requests a Roll, Player Rolls, GM Adjudicates` as specified in `docs/planning/slice-4-spec.md` | Product / Cross-domain | Accepted |
