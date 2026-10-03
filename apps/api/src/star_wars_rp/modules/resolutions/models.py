@@ -15,6 +15,14 @@ class ActionResolution(Base):
             name="ck_action_resolution_state",
         ),
         CheckConstraint(
+            "roll_authority IN ('GM', 'PLAYER')",
+            name="ck_action_resolution_roll_authority",
+        ),
+        CheckConstraint(
+            "risk_visibility IN ('GM_ONLY', 'PLAYER_VISIBLE')",
+            name="ck_action_resolution_risk_visibility",
+        ),
+        CheckConstraint(
             "mechanical_result IS NULL OR mechanical_result IN ('SUCCESS', 'FAILURE')",
             name="ck_action_resolution_mechanical_result",
         ),
@@ -144,6 +152,12 @@ class ActionResolution(Base):
     context_location_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     intent: Mapped[str] = mapped_column(Text, nullable=False)
     risk: Mapped[str] = mapped_column(Text, nullable=False)
+    roll_authority: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="GM", server_default="GM"
+    )
+    risk_visibility: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="GM_ONLY", server_default="GM_ONLY"
+    )
     mechanic: Mapped[str] = mapped_column(String(32), nullable=False, default="slicing")
     dc: Mapped[int] = mapped_column(nullable=False)
     resolved_modifier: Mapped[int] = mapped_column(nullable=False)

@@ -11,6 +11,7 @@ from star_wars_rp.modules.custom_d20.models import CustomD20CharacterProfile
 from star_wars_rp.modules.history.models import DomainEvent
 from star_wars_rp.modules.knowledge.models import CharacterKnowledge, KnowledgeFragment
 from star_wars_rp.modules.resolutions.models import ActionResolution
+from star_wars_rp.modules.world.models import Location
 
 
 def _player_assignment(
@@ -82,6 +83,68 @@ def player_character_projection(
         ],
     }
 
+
+
+def player_pending_resolution_projection(
+    db: Session,
+    principal_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+    resolution_id: uuid.UUID | None = None,
+) -> dict | None:
+    assignment = _player_assignment(db, principal_id, campaign_id)
+
+    stmt = (
+        select(ActionResolution, Character.name, Location.name)
+        .join(
+            Character,
+            (Character.campaign_id == ActionResolution.campaign_id)
+            & (Character.entity_id == ActionResolution.actor_character_id),
+        )
+        .join(
+            Location,
+            (Location.campaign_id == ActionResolution.campaign_id)
+            & (Location.entity_id == ActionResolution.context_location_id),
+        )
+        .where(
+            ActionResolution.campaign_id == campaign_id,
+            ActionResolution.actor_character_id == assignment.character_id,
+            ActionResolution.roll_authority == "PLAYER",
+            ActionResolution.state.in_(["READY", "AWAITING_ADJUDICATION"]),
+        )
+    )
+    if resolution_id is not None:
+        stmt = stmt.where(ActionResolution.id == resolution_id)
+    else:
+        stmt = stmt.order_by(
+            ActionResolution.created_at.desc(),
+            ActionResolution.id.desc(),
+        ).limit(1)
+
+    row = db.execute(stmt).first()
+    if row is None:
+        return None
+
+    resolution, actor_name, location_name = row
+    rolled = resolution.state == "AWAITING_ADJUDICATION"
+    return {
+        "resolution_id": resolution.id,
+        "actor_character_id": resolution.actor_character_id,
+        "actor_name": actor_name,
+        "mechanic": "Slicing",
+        "context_location_id": resolution.context_location_id,
+        "context_location_name": location_name,
+        "intent": resolution.intent,
+        "known_risk": (
+            resolution.risk
+            if resolution.risk_visibility == "PLAYER_VISIBLE"
+            else None
+        ),
+        "state": resolution.state,
+        "natural_roll": resolution.natural_roll if rolled else None,
+        "resolved_modifier": resolution.resolved_modifier if rolled else None,
+        "total": resolution.total if rolled else None,
+        "mechanical_result": resolution.mechanical_result if rolled else None,
+    }
 
 def player_resolution_projection(
     db: Session,
