@@ -6,6 +6,7 @@ on:
       - ai/architecture/slice-1
       - ai/architecture/slice-2-contact
       - ai/architecture/slice-3-adjudication
+      - ai/architecture/slice-4-player-roll
   pull_request:
     branches:
       - main
