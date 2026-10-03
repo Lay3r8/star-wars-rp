@@ -172,8 +172,9 @@ def test_success_reveal_is_authorized_atomic_and_idempotent():
             "is_corrected",
             "previous_final_outcome",
         }
-        assert "dc" not in player_resolution.text
-        assert "adjudication_reason" not in player_resolution.text
+        player_resolution_body = player_resolution.json()
+        assert "dc" not in player_resolution_body
+        assert "adjudication_reason" not in player_resolution_body
 
         reloaded = gm.get(f"/api/campaigns/{campaign_id}/resolutions/{resolution_id}")
         assert reloaded.status_code == 200
