@@ -135,7 +135,7 @@ async function prepareScenario(
     riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
   );
   console.log("S4_STEP: fill-dc");
-  await resolution.getByLabel("DC").fill("100");
+  await resolution.locator('input[name="dc"]').fill("100");
   console.log("S4_STEP: submit-resolution");
   await resolution.getByRole("button", { name: "Create pre-bound resolution" }).click();
 
