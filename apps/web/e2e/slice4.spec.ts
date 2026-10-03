@@ -62,7 +62,7 @@ async function prepareScenario(
   await resolution.getByLabel("Roll authority").selectOption("PLAYER");
   await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
   await resolution.getByLabel("Intent").fill(intent);
-  await resolution.getByLabel("Risk").fill(
+  await resolution.getByLabel("Risk", { exact: true }).fill(
     riskVisibility === "PLAYER_VISIBLE" ? visibleRisk : hiddenRisk,
   );
   await resolution.getByLabel("DC").fill("100");
