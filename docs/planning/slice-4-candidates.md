@@ -1,6 +1,6 @@
 # Slice 3 Product Closeout and Slice 4 Candidate Shortlist
 
-**Status:** PROPOSED — CROSS-DOMAIN REVIEW REQUIRED  
+**Status:** HUMAN OPTION SELECTED — SLICE SPECIFICATION REQUIRED  
 **Owner:** Product Lead  
 **Source of truth:** current main after PR #16 merge
 
@@ -411,8 +411,104 @@ CharacterKnowledge vs separate acquisition record; optional source/Location/Acti
 ### Candidate E
 Minimum discovery/publication grant; live vs snapshot persistence; explicit two-type projections; transactional/idempotent publication; avoid arbitrary serializer; bounded selection/search; leakage tests.
 
-# 7. Review and selection gate
+# 7. Human selection
 
-Game Design, UX and Architecture may review this PR in parallel. A second loop is needed only if a review raises a material dependency that changes another domain contract.
+**Date:** 2026-10-03  
+**Human Project Owner selection:** **Candidate A — GM Requests a Roll, Player Rolls, GM Adjudicates**
 
-After reviews, Product will consolidate to at most three Human-arbitration options. No candidate becomes Slice 4 yet. current-slice.md remains on Slice 3. No implementation is authorized.
+## Selection meaning
+
+Candidate A is selected as the basis for Slice 4 specification.
+
+This is **not yet an ACCEPTED Slice 4 contract**.
+
+The selected Product direction is deliberately bounded to:
+
+```text
+GM creates/request one slicing resolution
+-> one assigned Player sees the request
+-> Player triggers authoritative backend Roll
+-> immutable mechanical result
+-> GM reviews
+-> GM Finalizes or Overrides
+-> existing Slice 3 correction/supersession remains available
+```
+
+The selection does **not** yet include:
+
+- multiple Players participating in one resolution;
+- lead/assist mechanics;
+- aggregation of several dice;
+- opposed rolls;
+- combat;
+- generic realtime infrastructure;
+- client-generated authoritative randomness;
+- generic request/task/notification framework.
+
+## Why this follows naturally from Slices 1-3
+
+Slice 1 proved:
+
+- GM-authored slicing resolution;
+- backend D20;
+- explicit success/failure consequence handling.
+
+Slice 2 proved:
+
+- richer live-use GM workflows;
+- Player-safe disclosure;
+- targeted state refresh after content mutation.
+
+Slice 3 proved:
+
+- immutable mechanical evidence;
+- separate GM final adjudication;
+- both override directions;
+- correction/supersession;
+- Player-safe finalized-resolution projection.
+
+Candidate A now tests the next narrow authority boundary:
+
+> the Player may initiate the mechanical Roll for an eligible GM-authored resolution, while the backend remains authoritative for randomness and the GM retains final adjudication authority.
+
+## Specification questions still requiring domain review
+
+### Game Design
+
+- exact Player roll authority;
+- which Intent/Risk/stakes are visible before Roll;
+- whether hidden Risk remains allowed;
+- whether GM may still Roll on behalf of Player;
+- whether one-Player requested rolling is explicitly accepted while true group collaboration remains deferred.
+
+### UX
+
+- exact GM request flow;
+- Player pending-request card;
+- waiting/submitted/finalized states;
+- acceptable freshness/polling behavior;
+- stale-state handling;
+- whether any explicit notification is required.
+
+### Architecture
+
+- whether existing ActionResolution can represent a pending Player-roll request with a narrow extension;
+- exact Player Roll command/API;
+- server-derived eligible roller;
+- concurrency between GM and Player Roll attempts;
+- Player read model for pending request;
+- whether HTTP + bounded polling is sufficient;
+- no realtime infrastructure unless the UX requirement proves it necessary.
+
+---
+
+# 8. Selection gate
+
+After the parallel Game Design, UX and Architecture reviews:
+
+1. Product consolidates only the contracts needed for Candidate A.
+2. A second review loop is created only if one domain raises a material dependency affecting another domain contract.
+3. Product writes the exact Slice 4 specification.
+4. Human acceptance is required before Slice 4 becomes ACCEPTED.
+5. `docs/planning/current-slice.md` remains on Slice 3 until that acceptance.
+6. No implementation begins before the accepted Slice 4 contract is merged to `main`.
