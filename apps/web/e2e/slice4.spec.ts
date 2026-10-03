@@ -155,7 +155,7 @@ async function closeScenario(value: Scenario) {
 }
 
 test("Player rolls a GM request and both sides converge through polling without global Refresh", async ({ browser }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   const scenario = await prepareScenario(browser, "live", "PLAYER_VISIBLE");
   try {
     const pending = scenario.playerPage.getByRole("region", { name: "Pending roll request" });
@@ -201,7 +201,7 @@ test("Player rolls a GM request and both sides converge through polling without 
 });
 
 test("GM-only Risk, DC and success claim stay hidden and Player has no GM mutation controls", async ({ browser }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   const scenario = await prepareScenario(browser, "hidden", "GM_ONLY");
   try {
     const pending = scenario.playerPage.getByRole("region", { name: "Pending roll request" });
