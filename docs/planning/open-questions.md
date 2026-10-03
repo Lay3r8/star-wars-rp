@@ -90,3 +90,12 @@ Resolved Slice 3 decisions — including binary Override in both directions, cor
 **Options:** new roll event/resolution; bounded reroll lineage; metacurrency-specific rule contract.  
 **Decision required:** only when a future accepted rules slice introduces rerolls or metacurrency.  
 **Status:** OPEN — DEFERRED
+
+### Q-009 — Structured action Target / Subject
+
+**Owner:** Product / Game Design / UX / Architecture  
+**Affected domains:** Product, Game Design, UX, Architecture, Security  
+**Context:** Slice 3 manual testing showed that Actor + mechanic + Location context + free-text Intent/Risk may not clearly identify what person, object or topic an action is actually directed at. Example: Globox slices at the Imperial Cargo Terminal concerning Vic la Menace in order to obtain information about Senator Traitrus. A structured action subject could improve live readability, history, linking and later mechanics, but Slice 3 does not establish such a model.  
+**Options:** no structured subject; one optional Target/Subject; multiple subjects; Entity-only reference; richer typed context; another workflow-specific representation.  
+**Decision required:** only when a future accepted vertical slice needs structured action subject/context. Do not infer a target_entity_id, cardinality, requiredness or universal applicability before that review.  
+**Status:** OPEN — DEFERRED
