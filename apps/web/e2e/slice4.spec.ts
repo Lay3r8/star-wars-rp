@@ -231,6 +231,20 @@ test("Player rolls a GM request and both sides converge through polling without 
     if (overrideOutcome === "SUCCESS") {
       await expect(scenario.playerPage.getByText(claim, { exact: true })).toBeVisible();
     }
+
+    // Regression: an existing finalized summary must not stop request discovery.
+    // Create another PLAYER-authority resolution while the Player remains on the
+    // same open workspace, then prove it appears through polling without reload.
+    const resolutionWorkspace = scenario.gmPage.getByRole("region", {
+      name: "Resolution adjudication",
+    });
+    await resolutionWorkspace.getByLabel("Roll authority").selectOption("PLAYER");
+    await resolutionWorkspace
+      .getByRole("button", { name: "Create pre-bound resolution" })
+      .click();
+
+    await expect(pending).toBeVisible({ timeout: 7000 });
+    await expect(pending.getByRole("button", { name: "Roll", exact: true })).toBeVisible();
   } finally {
     await closeScenario(scenario);
   }

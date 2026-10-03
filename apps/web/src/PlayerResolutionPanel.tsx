@@ -77,18 +77,16 @@ export default function PlayerResolutionPanel({
     void refresh();
   }, [refresh, refreshKey]);
 
-  const shouldPoll =
-    summary === null ||
-    pending?.state === "READY" ||
-    pending?.state === "AWAITING_ADJUDICATION";
-
   useEffect(() => {
-    if (!shouldPoll) return;
+    // Keep the Player workspace subscribed at a bounded frequency while it is open.
+    // A finalized summary does not mean the live session is over: the GM may create
+    // another Player-authority request at any time, and that request must appear
+    // without a global refresh.
     const timer = window.setInterval(() => {
       void refresh();
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [refresh, shouldPoll]);
+  }, [refresh]);
 
   async function roll() {
     if (!pending || pending.state !== "READY") return;
