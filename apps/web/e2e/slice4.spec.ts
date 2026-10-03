@@ -49,18 +49,33 @@ async function prepareScenario(
   await gmPage.getByRole("button", { name: "Create as GM" }).click();
   await gmPage.getByText("Slice 1 proof setup").click();
 
+  const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
+
   console.log("S4_STEP: add-player");
   await gmPage.getByLabel("Registered username").fill(playerName);
   await gmPage.getByRole("button", { name: "Add to campaign" }).click();
+  await expect(gmPage.getByText(playerName, { exact: true })).toBeVisible();
+
   console.log("S4_STEP: create-character");
   await gmPage.getByLabel("Character name").fill("Globox");
   await gmPage.getByRole("button", { name: "Create character" }).click();
+  await expect(resolution.getByText("Globox", { exact: true })).toBeVisible();
+
   console.log("S4_STEP: create-location");
   await gmPage.getByRole("button", { name: "Create location" }).click();
+  await expect(
+    resolution.getByText("Imperial Cargo Terminal", { exact: true }),
+  ).toBeVisible();
+
   console.log("S4_STEP: create-secret");
   await gmPage.getByRole("button", { name: "Create secret" }).click();
+  await expect(resolution.getByText(claim, { exact: true })).toBeVisible();
+
   console.log("S4_STEP: assign-player");
   await gmPage.getByRole("button", { name: "Assign" }).click();
+  await expect(
+    resolution.getByRole("button", { name: "Create pre-bound resolution" }),
+  ).toBeEnabled();
   await gmPage.getByText("Slice 1 proof setup").click();
 
   // Player is already in the workspace before the GM creates the request.
@@ -71,7 +86,6 @@ async function prepareScenario(
   await expect(playerPage.getByRole("heading", { name: "Globox" })).toBeVisible();
 
   console.log("S4_STEP: configure-resolution");
-  const resolution = gmPage.getByRole("region", { name: "Resolution adjudication" });
   await resolution.getByLabel("Roll authority").selectOption("PLAYER");
   await resolution.getByLabel("Risk visibility").selectOption(riskVisibility);
   console.log("S4_STEP: fill-intent");
