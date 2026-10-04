@@ -1366,3 +1366,811 @@ After the parallel Game Design, UX and Architecture reviews of Candidate B:
 4. Human acceptance is required before Slice 5 becomes ACCEPTED.
 5. `docs/planning/current-slice.md` remains on Slice 4 until that acceptance.
 6. No implementation begins before the accepted Slice 5 contract is merged to `main`.
+
+---
+
+# 9. Consolidated Slice 5 combat contract
+
+**Consolidation status:** READY FOR EXACT SPECIFICATION  
+**Selection status remains:** HUMAN OPTION SELECTED — SLICE SPECIFICATION REQUIRED
+
+This section consolidates only the contracts necessary to write the exact Slice 5 specification.
+
+It does not mark Slice 5 ACCEPTED and does not authorize implementation.
+
+## PRODUCT SCENARIO
+
+One Player Character, Globox, is cornered by one abstract Imperial Patrol group in one bounded encounter.
+
+Primary objective:
+
+> **Escape the Imperial Patrol.**
+
+The playable loop is:
+
+```text
+Encounter starts
+-> Round 1 / Globox turn
+-> Player chooses Attack or Escape
+-> deterministic combat state updates
+-> if encounter remains active: GM resolves Patrol Attack
+-> next round / Globox turn
+-> repeat
+-> encounter ends by escape, patrol neutralization, or Globox incapacitation
+```
+
+This slice proves one objective-driven personal-scale combat encounter.
+
+It does not define the permanent Custom D20 combat system or final balance.
+
+The exact scenario tuning accepted as the basis for specification is:
+
+```text
+Globox
+  Attack Modifier: +3
+  Defence: 12
+  Combat Vitality: 4
+  Attack Damage: 2
+
+Imperial Patrol
+  Attack Modifier: +2
+  Defence: 12
+  Group Strength: 4
+  Attack Damage: 2
+
+Escape Progress
+  starts at 0
+  target = 3
+```
+
+These values are Slice 5 encounter tuning only.
+
+## GAME DESIGN MICRO-CONTRACT
+
+Slice 5 contains exactly:
+
+- deterministic Player-first alternating turns;
+- one action per acting side per turn;
+- Player actions: Attack or Escape;
+- hostile action: Attack Globox;
+- backend-authoritative d20 attacks;
+- static Defence threshold;
+- fixed damage;
+- encounter-scoped Combat Vitality / Group Strength;
+- deterministic Escape Progress;
+- automatic terminal-state detection.
+
+No natural-1/natural-20 special rule.
+
+No crit, fumble, opposed roll, defence roll, degree of success, advantage/disadvantage or rolled damage.
+
+## PLAYER LOOP
+
+Always-visible state:
+
+- objective;
+- round;
+- current actor;
+- Globox current/initial Combat Vitality;
+- Patrol current/initial Group Strength;
+- Escape Progress / target;
+- latest safe action result;
+- terminal status when ended.
+
+On the Player turn, exactly two primary actions are available:
+
+### Attack
+
+One interaction:
+
+```text
+Attack
+-> backend authoritative d20
+-> d20 + 3 vs Patrol Defence 12
+-> HIT or MISS
+-> HIT applies 2 damage immediately
+-> if Patrol Strength reaches 0, encounter ends
+-> otherwise turn becomes Patrol
+```
+
+No target selector because the Patrol group is the only valid target.
+
+No Intent, Risk, confirmation, GM Finalize or damage confirmation.
+
+### Escape
+
+One interaction:
+
+```text
+Escape
+-> Escape Progress +1
+-> if Progress reaches 3, encounter ends ESCAPED
+-> otherwise turn becomes Patrol
+```
+
+No roll and no confirmation.
+
+After a committed Player action, Player controls become read-only until the next Player turn.
+
+## GM LOOP
+
+The GM supervises rather than approves routine deterministic combat effects.
+
+Flow:
+
+```text
+Start Encounter
+-> observe Player action/result
+-> when Patrol turn: Resolve Patrol Attack
+-> observe result/state change
+-> repeat
+-> intervene only for fiction/edge cases outside the bounded controls
+```
+
+Product resolves the hostile-turn interaction as:
+
+> **GM presses one compact `Resolve Patrol Attack` command.**
+
+The hostile action is not automatic in Slice 5.
+
+Rationale:
+
+- preserves GM pacing;
+- keeps actor attribution clear;
+- avoids a System principal;
+- keeps Player and hostile mutations independently observable;
+- introduces no NPC decision tree or AI.
+
+No GM Finalize/Override is required for routine Attack, Escape, damage or threshold transitions.
+
+## ENCOUNTER OBJECTIVE
+
+Primary objective:
+
+> Escape the Imperial Patrol.
+
+Victory:
+
+```text
+Escape Progress >= 3
+OR
+Patrol Group Strength <= 0
+```
+
+Defeat:
+
+```text
+Globox Combat Vitality <= 0
+```
+
+Neutralizing the Patrol is an alternative means of securing escape, not a mandatory kill-all objective.
+
+Terminal thresholds end the encounter immediately. No extra End Encounter confirmation.
+
+## TURN MODEL
+
+Exact order:
+
+```text
+Round 1:
+  Globox
+  Imperial Patrol
+
+Round N:
+  Globox
+  Imperial Patrol
+```
+
+Start:
+
+- round = 1;
+- current actor = PLAYER.
+
+After a non-terminal Player action:
+
+- current actor = PATROL;
+- round unchanged.
+
+After a non-terminal Patrol action:
+
+- round += 1;
+- current actor = PLAYER.
+
+Terminal state:
+
+- current actor becomes null;
+- encounter ends immediately.
+
+No initiative roll, initiative score, phases or End Turn action.
+
+## ACTION ECONOMY
+
+Exactly one action per side per turn.
+
+Player:
+
+- Attack;
+- Escape.
+
+Patrol:
+
+- Attack Globox.
+
+The action itself consumes the turn.
+
+No reactions, opportunity attacks, bonus actions, free actions, movement action or multiple attacks.
+
+## ATTACK / DEFENCE
+
+Attack procedure:
+
+```text
+backend d20 + Attack Modifier >= static Defence
+=> HIT
+else
+=> MISS
+```
+
+Player:
+
+```text
+d20 + 3 vs 12
+```
+
+Patrol:
+
+```text
+d20 + 2 vs 12
+```
+
+Defence is a Slice 5 static combat threshold, not a universal future Defence formula.
+
+Attack modifiers are scenario-scoped precomputed combat values.
+
+Slice 5 does not define Skills/Attributes/weapon-proficiency formulas.
+
+## DAMAGE
+
+Fixed deterministic damage:
+
+```text
+HIT -> 2
+MISS -> 0
+```
+
+Damage commits in the same combat-action transaction.
+
+No weapon catalogue and no damage roll.
+
+## HEALTH / INCAPACITATION
+
+Health is encounter-scoped only.
+
+Globox:
+
+```text
+Combat Vitality: 4 -> minimum 0
+```
+
+Patrol:
+
+```text
+Group Strength: 4 -> minimum 0
+```
+
+When Globox reaches 0:
+
+- status = INCAPACITATED;
+- encounter ends;
+- no death/wound/recovery semantics are implied.
+
+When Patrol reaches 0:
+
+- status = PATROL_NEUTRALIZED;
+- encounter ends in Player victory.
+
+Combat Vitality and Group Strength are not accepted as the permanent Character health model.
+
+## HOSTILE GROUP
+
+The entire Imperial Patrol is one abstract encounter-scoped hostile unit.
+
+It has:
+
+- display name;
+- Attack Modifier;
+- Defence;
+- fixed Damage;
+- Group Strength;
+- one turn.
+
+No individual stormtrooper Character rows.
+
+No per-minion HP.
+
+No degradation of attack capability at intermediate Group Strength.
+
+No NPC AI.
+
+When the Patrol turn is active, its only legal action is Attack Globox.
+
+## RANGE / POSITION
+
+No range or positional subsystem is required.
+
+The encounter fiction establishes that:
+
+- both sides can attack;
+- Globox can attempt Escape;
+- exact distance is irrelevant to available choices.
+
+Escape Progress is sufficient spatial abstraction for the selected objective.
+
+Do not introduce grid, coordinates, range bands, movement or cover.
+
+## DETERMINISTIC VS GM-ADJUDICATED EFFECTS
+
+### Deterministic
+
+- d20 generation;
+- attack total;
+- HIT/MISS;
+- fixed damage;
+- Vitality/Strength reduction;
+- Escape Progress +1;
+- round/current actor transition;
+- threshold detection;
+- terminal encounter status.
+
+These commit synchronously without Slice-3-style Finalize/Override.
+
+### GM-adjudicated
+
+- unusual fictional actions outside Attack/Escape;
+- narrative description of results;
+- interpretation of what incapacitation means after combat;
+- consequences outside the bounded encounter state;
+- edge cases not represented by accepted commands.
+
+This remains consistent with D-004.
+
+## ARCHITECTURE MODEL
+
+Use one combat-specific persisted aggregate.
+
+Suggested ownership:
+
+```text
+combat module
+  -> CombatEncounter current state and legal transitions
+  -> combat-specific commands
+  -> combat-safe projections
+
+custom_d20
+  -> reuse pure d20 + modifier >= threshold rule shape
+
+campaigns
+  -> membership / PlayerCharacterAssignment
+
+characters
+  -> existing Player Character identity
+
+history
+  -> append-only combat action history
+```
+
+Do not route combat through Slicing-specific ActionResolution.
+
+### CombatEncounter minimum persisted state
+
+- id;
+- campaign_id;
+- location_id;
+- player_character_id;
+- objective;
+- status = ACTIVE | ESCAPED | PATROL_NEUTRALIZED | INCAPACITATED;
+- round;
+- current_actor = PLAYER | PATROL | null when terminal;
+- Player attack modifier / Defence / fixed Damage;
+- initial/current Player Vitality;
+- Patrol display name;
+- Patrol attack modifier / Defence / fixed Damage;
+- initial/current Patrol Strength;
+- Escape Progress / target;
+- created_by_principal_id;
+- created_at;
+- ended_at.
+
+Scenario tuning is initialized server-side.
+
+The client does not submit combat tuning.
+
+No generic Combatant table, Scene, generic Encounter builder, action-command model, workflow engine, Rule Effect DSL or combat engine abstraction.
+
+## AUTHORIZATION
+
+### Start Encounter
+
+GM-only.
+
+Backend validates:
+
+- GM campaign membership;
+- same-campaign Player Character;
+- same-campaign Location;
+- Character is assigned to a PLAYER member;
+- no conflicting ACTIVE encounter for that Character.
+
+### Player Attack / Escape
+
+Server derives:
+
+```text
+authenticated principal
+-> PLAYER CampaignMembership
+-> PlayerCharacterAssignment
+-> encounter Character matches assignment
+-> same campaign
+-> ACTIVE
+-> current actor = PLAYER
+-> expected round matches
+```
+
+Player cannot supply authoritative:
+
+- target;
+- die;
+- modifier;
+- Defence;
+- damage;
+- Vitality;
+- Group Strength;
+- Escape Progress;
+- turn transition;
+- encounter status.
+
+### Patrol Attack
+
+GM-only.
+
+Backend requires ACTIVE + PATROL turn + expected round.
+
+## PLAYER PROJECTION
+
+Do not serialize CombatEncounter directly.
+
+Minimum Player-safe projection:
+
+- encounter id;
+- objective;
+- status;
+- round;
+- current actor;
+- Player Character id/name;
+- current/initial Vitality;
+- Patrol display name;
+- current/initial Group Strength;
+- Patrol status;
+- Escape Progress/target;
+- derived `can_attack`;
+- derived `can_escape`;
+- compact safe `last_action`.
+
+For Attack feedback, `last_action` may expose:
+
+- raw roll;
+- applicable modifier;
+- total;
+- Defence threshold;
+- HIT/MISS;
+- damage;
+- before/after bounded health state.
+
+This exposure is accepted only for the selected combat feedback, not as a generic hostile-stat projection rule.
+
+## LIVE UPDATE STRATEGY
+
+Existing bounded polling remains sufficient.
+
+Use:
+
+- immediate re-fetch after own mutation;
+- immediate re-fetch after stale/conflict response;
+- polling while waiting for the other side;
+- approximately 1 second during an active combat wait if the existing 2-second cadence feels sluggish;
+- stop polling when terminal.
+
+No WebSockets or SSE.
+
+The exact interval is an implementation tuning value, not a new transport contract.
+
+## CONCURRENCY / STALE COMMANDS
+
+Use PostgreSQL row locking.
+
+Player/GM combat commands carry `expected_round`.
+
+Mutation requires:
+
+- ACTIVE;
+- expected current actor;
+- expected round.
+
+This prevents a delayed Round-1 Player command from becoming valid again when Round 2 returns to PLAYER.
+
+At-most-once state mutation is required.
+
+No generic idempotency-key platform.
+
+## HISTORY
+
+Current state remains relational on CombatEncounter.
+
+DomainEvent remains append-only history only.
+
+Sufficient bounded event types:
+
+- `combat.player_attack_resolved`;
+- `combat.escape_advanced`;
+- `combat.patrol_attack_resolved`.
+
+No CombatAction table is required for this slice.
+
+No event sourcing.
+
+## TESTING STRATEGY
+
+Follow the accepted post-Slice-4 testing direction.
+
+### Required backend rules/invariants
+
+- d20 + modifier vs Defence;
+- natural 1/20 ordinary;
+- HIT fixed damage 2;
+- MISS zero damage;
+- health/strength clamp at 0;
+- Escape +1 with no roll;
+- deterministic starting turn;
+- Player -> Patrol transition;
+- Patrol -> next-round Player transition;
+- each terminal threshold;
+- no actions after terminal.
+
+### Required security
+
+- non-member denied;
+- wrong Player denied;
+- assigned Character only;
+- Player only on Player turn;
+- Patrol command GM-only;
+- cross-campaign access rejected;
+- no injection of authoritative combat values;
+- Player projection does not leak non-approved fields.
+
+### Required integration/concurrency
+
+- duplicate/concurrent Attack applies at most once;
+- duplicate/concurrent Escape applies at most once;
+- duplicate Patrol attack applies at most once;
+- stale expected_round rejected;
+- full multi-turn service sequence;
+- reload uses PostgreSQL current state;
+- current-state mutation and history append are atomic.
+
+### Frontend
+
+- typecheck;
+- production build.
+
+### Migration
+
+One additive CombatEncounter migration is expected.
+
+Dedicated populated-data migration test is **not required by default** because existing tables need not be transformed.
+
+Normal Alembic upgrade-to-head verification remains required.
+
+### E2E
+
+One complete useful combat loop.
+
+Do not duplicate HIT/MISS/terminal/security matrices in Playwright.
+
+### HUMAN TESTING
+
+Mandatory before implementation merge.
+
+The final Product acceptance before Human testing must provide a concrete functional test plan.
+
+## EXPLICIT EXCLUSIONS
+
+No:
+
+- initiative roll/stat;
+- tactical map/grid;
+- coordinates;
+- exact movement;
+- range bands;
+- cover;
+- reactions;
+- opportunity attacks;
+- bonus/free actions;
+- multiple attacks;
+- multiple independent hostile groups;
+- Player target selection;
+- individual stormtrooper entities;
+- per-minion HP;
+- armour system;
+- weapon catalogue;
+- weapon-specific/rolled damage;
+- crits/fumbles;
+- degrees of success;
+- permanent Character health;
+- wounds/injuries/death/recovery;
+- advanced conditions;
+- Force;
+- talents/progression;
+- NPC AI;
+- morale/surrender;
+- generic combat correction/Undo;
+- encounter builder;
+- generic Scene;
+- generic Combatant abstraction;
+- generic combat/rules engine;
+- generic action-command model;
+- workflow/state-machine engine;
+- Rule Effect DSL;
+- combat through ActionResolution;
+- universal Target/Subject model;
+- WebSockets/SSE;
+- broker/worker;
+- microservices.
+
+# 10. Review disagreements and Product dispositions
+
+## Hostile turn: automatic vs GM-triggered
+
+**FACT**
+
+Game Design defines exactly one Patrol behavior and leaves execution pacing to Product/UX. UX recommends one GM `Resolve Patrol Attack` interaction. Architecture independently recommends the same approach.
+
+**DOMAIN OWNER POSITION**
+
+- Game Design: either execution shape is compatible with the combat rules.
+- UX: GM-triggered is preferred for pacing and awareness.
+- Architecture: GM-triggered is preferred for authorization/audit simplicity and to avoid a System principal or chained automatic mutation.
+
+**PRODUCT IMPACT**
+
+Slice 5 uses one GM `Resolve Patrol Attack` command.
+
+No tactical decision is presented.
+
+**HUMAN DECISION REQUIRED: NO**
+
+## Health persistence
+
+**FACT**
+
+Game Design proposes Combat Vitality / Group Strength solely for this encounter. Architecture can keep both entirely on CombatEncounter. UX does not need a permanent Character-health representation.
+
+**DOMAIN OWNER POSITION**
+
+All three domains support encounter-scoped health for Slice 5.
+
+**PRODUCT IMPACT**
+
+No Character or CustomD20CharacterProfile permanent health field is introduced.
+
+**HUMAN DECISION REQUIRED: NO**
+
+## Range / position / cover
+
+**FACT**
+
+The accepted Attack-vs-Escape decision does not depend on spatial distance.
+
+**DOMAIN OWNER POSITION**
+
+Game Design: defer range and cover.
+UX: no spatial UI is justified.
+Architecture: no positional persistence is needed.
+
+**PRODUCT IMPACT**
+
+All spatial subsystems remain excluded.
+
+**HUMAN DECISION REQUIRED: NO**
+
+## Routine GM adjudication
+
+**FACT**
+
+The combat micro-contract gives deterministic meaning to Attack, Escape, damage and terminal thresholds.
+
+**DOMAIN OWNER POSITION**
+
+Game Design and UX explicitly recommend immediate deterministic commit rather than Slice-3 Finalize/Override for routine actions. Architecture supports synchronous state mutation.
+
+**PRODUCT IMPACT**
+
+Combat does not reuse the ActionResolution adjudication lifecycle for routine actions.
+
+D-004 remains intact for unusual fiction and consequences beyond the accepted combat state.
+
+**HUMAN DECISION REQUIRED: NO**
+
+## Combat-state correction / Undo
+
+**FACT**
+
+UX identifies a bounded GM correction flow as possible but safe to defer. Architecture recommends no correction command by default.
+
+**DOMAIN OWNER POSITION**
+
+No domain requires combat correction to validate the selected encounter.
+
+**PRODUCT IMPACT**
+
+Correction/Undo is excluded from Slice 5.
+
+A deterministic product defect found during testing must still be fixed; manual acceptance can restart the bounded test encounter if an operator misclick needs recovery.
+
+**HUMAN DECISION REQUIRED: NO**
+
+## Polling cadence
+
+**FACT**
+
+Slice 4 proved bounded polling. Combat has more frequent state transitions.
+
+**DOMAIN OWNER POSITION**
+
+UX suggests approximately 1 second if 2 seconds feels sluggish. Architecture agrees this is implementation tuning and does not require push transport.
+
+**PRODUCT IMPACT**
+
+Bounded polling remains the contract. Implement around 1 second for active combat waiting unless implementation/testing shows a better bounded value.
+
+No WebSocket/SSE.
+
+**HUMAN DECISION REQUIRED: NO**
+
+## Numeric encounter tuning
+
+**FACT**
+
+Game Design supplied exact values to make the acceptance scenario deterministic enough to balance and test.
+
+**DOMAIN OWNER POSITION**
+
+Game Design explicitly states these values are Slice-5 tuning, not global Custom D20 balance. Architecture persists them as encounter-scoped snapshots. UX consumes them through combat state.
+
+**PRODUCT IMPACT**
+
+Product accepts the reviewed values for the Slice 5 scenario only.
+
+They must not be documented as permanent Character progression/combat balance.
+
+**HUMAN DECISION REQUIRED: NO**
+
+# 11. Consolidation result
+
+## BLOCKERS
+
+None.
+
+Game Design: READY FOR SPEC.  
+UX: READY FOR SPEC.  
+Architecture: READY FOR SPEC.
+
+No material cross-domain disagreement requires a second review loop.
+
+## HUMAN ARBITRATION
+
+**NO MATERIAL HUMAN ARBITRATION REMAINS AT THIS STAGE.**
+
+The next Product step after this PR merges is to write the exact Slice 5 specification from this consolidated contract.
+
+Slice 5 remains unaccepted until the Human Project Owner explicitly accepts that specification.
+
