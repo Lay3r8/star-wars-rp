@@ -4,7 +4,7 @@ Questions requiring future cross-domain arbitration are recorded here.
 
 Every item in this file is **OPEN — DEFERRED** and therefore non-normative until a future accepted slice or explicit decision resolves it.
 
-Resolved Slice 3 and Slice 4 decisions do **not** belong here. This includes binary Override in both directions, correction-by-supersession, Player-side Roll for explicitly PLAYER-authority resolutions, backend-authoritative randomness, bounded polling for Slice 4 waiting states, explicit Risk visibility, hidden DC for Slice 4, and narrow evolution of the existing ActionResolution.
+Resolved Slice 3, Slice 4 and Slice 5 decisions do **not** belong here. This includes binary Override in both directions, correction-by-supersession, Player-side Roll for explicitly PLAYER-authority resolutions, backend-authoritative randomness, explicit Risk visibility, the accepted bounded-polling strategies, and Slice 5's combat-specific Encounter contract.
 
 ## Format
 
@@ -59,9 +59,9 @@ Resolved Slice 3 and Slice 4 decisions do **not** belong here. This includes bin
 
 **Owner:** Product / UX / Architecture  
 **Affected domains:** Product, UX, Architecture  
-**Context:** Slice 4 accepts immediate re-fetch plus bounded HTTP polling (approximately 2 seconds while waiting) for its one-Player live roll workflow and explicitly does not require push transport. A future workflow may still demonstrate that polling is insufficient.  
+**Context:** Slice 4 accepts bounded HTTP polling for its one-Player live roll workflow, and Slice 5 accepts immediate re-fetch plus bounded polling targeting approximately one second during active sequential combat. Both explicitly reject push transport as unnecessary for their accepted workflows. A future workflow may still demonstrate that polling is insufficient.  
 **Options:** retain bounded polling; SSE; WebSockets; another bounded push mechanism.  
-**Decision required:** only when a future accepted live-play workflow demonstrates measured usability or freshness requirements that Slice 4 polling cannot satisfy.  
+**Decision required:** only when a future accepted live-play workflow demonstrates measured usability or freshness requirements that the Slice 4/5 polling patterns cannot satisfy.  
 **Status:** OPEN — DEFERRED
 
 ### Q-006 — Contact/entity authoring lifecycle
@@ -77,9 +77,9 @@ Resolved Slice 3 and Slice 4 decisions do **not** belong here. This includes bin
 
 **Owner:** Product / Game Design / UX  
 **Affected domains:** Product, Game Design, UX, Security  
-**Context:** Slice 3 and Slice 4 both keep DC hidden from the Player while exposing the accepted mechanical/result information for their workflows. This remains normative for those slices only and does not establish a universal hidden-DC rule for all future mechanics.  
-**Options:** keep DC hidden by default; expose DC for specific mechanics/workflows; configurable table-style policy if later justified.  
-**Decision required:** only when a future accepted mechanic or Player workflow benefits from explicit DC visibility.  
+**Context:** Slice 3 and Slice 4 keep ActionResolution DC hidden from the Player. Slice 5 explicitly exposes the combat Defence threshold inside bounded combat action feedback. These are mechanic-specific decisions and still do not establish one universal visibility rule for all future checks.  
+**Options:** keep thresholds hidden by default; expose them for specific mechanics/workflows; configurable table-style policy if later justified.  
+**Decision required:** only when a future accepted mechanic requires a general threshold-visibility policy beyond the mechanic-specific Slice 3-5 decisions.  
 **Status:** OPEN — DEFERRED
 
 ### Q-008 — Future reroll / metacurrency semantics
@@ -95,7 +95,7 @@ Resolved Slice 3 and Slice 4 decisions do **not** belong here. This includes bin
 
 **Owner:** Product / Game Design / UX / Architecture  
 **Affected domains:** Product, Game Design, UX, Architecture, Security  
-**Context:** Manual testing across Slices 3-4 shows that Actor + mechanic + Location context + free-text Intent/Risk may not clearly identify what an action is fictionally about. The Subject may be ephemeral and need no persistent Entity at all, e.g. a security terminal being sliced or the opposite rooftop in an Athletics jump. A persistent Entity reference may be an optional enrichment when one exists, but must not be presumed.  
+**Context:** Manual testing across Slices 3-4 shows that Actor + mechanic + Location context + free-text Intent/Risk may not clearly identify what an action is fictionally about. Slice 5 evaluated this need but did not require a universal Subject model: combat has one server-derived hostile target and explicitly excludes universal Target/Subject semantics. The broader fictional Subject may still be ephemeral and need no persistent Entity at all; optional Entity enrichment must not be presumed.  
 **Options:** display/free-text subject; one optional Subject with optional Entity enrichment; mechanic-specific structured subject/target; multiple subjects where a future mechanic proves the need; another bounded representation.  
-**Decision required:** explicitly evaluate this in the next slice-selection cycle. Game Design must distinguish mechanical target, fictional subject, effect recipient and contextual entity; UX must establish minimum live-entry cost; Architecture must wait for those contracts before choosing persistence. Do not infer target_entity_id, Entity-only semantics, singular cardinality, requiredness or universal applicability.  
+**Decision required:** revisit only when a future accepted non-combat or multi-target workflow actually requires structured fictional Subject semantics. Game Design must distinguish mechanical target, fictional subject, effect recipient and contextual entity; UX must establish minimum live-entry cost; Architecture must wait for those contracts before choosing persistence. Do not infer target_entity_id, Entity-only semantics, singular cardinality, requiredness or universal applicability.  
 **Status:** OPEN — DEFERRED
