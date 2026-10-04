@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "./api";
 import ContactWorkspace from "./ContactWorkspace";
+import { GmCombatWorkspace, PlayerCombatWorkspace } from "./CombatWorkspace";
 import PlayerResolutionPanel from "./PlayerResolutionPanel";
 import ResolutionWorkspace from "./ResolutionWorkspace";
 
@@ -114,6 +115,7 @@ function PlayerWorkspace({ campaign }: { campaign: Campaign }) {
             <h3>{projection.character.name}</h3>
             <p>Slicing modifier: <strong>{projection.character.slicing_modifier >= 0 ? "+" : ""}{projection.character.slicing_modifier}</strong></p>
           </div>
+          <PlayerCombatWorkspace campaignId={campaign.id} />
           <div className="panel">
             <h3>Known information</h3>
             {projection.knowledge.length === 0 ? (
@@ -182,6 +184,9 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
   }
 
   const players = members.filter((member) => member.role === "PLAYER");
+  const assignedCharacterIds = players
+    .map((player) => player.assigned_character_id)
+    .filter((id): id is string => Boolean(id));
   return (
     <section className="workspace">
       <div className="workspace-header">
@@ -189,6 +194,13 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
         <button onClick={() => void refresh()}>Refresh</button>
       </div>
       <ErrorBox error={error} />
+
+      <GmCombatWorkspace
+        campaignId={campaign.id}
+        characters={characters}
+        locations={locations}
+        assignedCharacterIds={assignedCharacterIds}
+      />
 
       <ContactWorkspace
         campaignId={campaign.id}
@@ -276,14 +288,12 @@ function GmWorkspace({ campaign }: { campaign: Campaign }) {
         characters={characters}
         locations={locations}
         fragments={fragments}
-        assignedCharacterIds={players
-          .map((player) => player.assigned_character_id)
-          .filter((id): id is string => Boolean(id))}
+        assignedCharacterIds={assignedCharacterIds}
       />
 
       <section className="panel">
         <h3>Meaningful history</h3>
-        {history.length === 0 ? <p className="muted">No terminal resolution history yet.</p> : (
+        {history.length === 0 ? <p className="muted">No meaningful history yet.</p> : (
           <ul>{history.map((item) => <li key={item.id}>{item.message}</li>)}</ul>
         )}
       </section>

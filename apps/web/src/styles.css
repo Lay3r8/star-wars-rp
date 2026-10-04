@@ -146,3 +146,83 @@ legend { color: #b9c5d5; padding: 0 .35rem; }
 .warning-box p { margin-bottom: .5rem; }
 .adjudication-box h4,
 .exception-box h4 { margin-top: 0; }
+
+
+.combat-workspace {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.status-pill {
+  border: 1px solid #39465a;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.combat-turn {
+  margin: 0.75rem 0 0;
+}
+
+.combat-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.combat-stats > div {
+  border: 1px solid #39465a;
+  border-radius: 0.6rem;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.combat-stats span {
+  color: #8da2be;
+  font-size: 0.85rem;
+}
+
+.combat-feedback,
+.combat-terminal {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.combat-feedback p {
+  margin-bottom: 0;
+}
+
+.combat-terminal {
+  font-size: 1.1rem;
+}
+
+.combat-actions {
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.combat-start-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .combat-stats,
+  .combat-start-fields {
+    grid-template-columns: 1fr;
+  }
+}

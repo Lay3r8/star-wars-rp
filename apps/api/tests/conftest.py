@@ -31,6 +31,7 @@ def clean_database(migrated_database):
             text(
                 """
                 TRUNCATE TABLE
+                    combat_encounter,
                     domain_event,
                     action_resolution,
                     player_character_assignment,
