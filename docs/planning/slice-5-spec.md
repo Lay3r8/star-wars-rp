@@ -1,14 +1,14 @@
-# Slice 5 Proposed Specification — Escape the Imperial Patrol
+# Slice 5 Specification — Escape the Imperial Patrol
 
-**Status:** PROPOSED — CROSS-DOMAIN REVIEW REQUIRED  
+**Status:** ACCEPTED  
 **Owner:** Product Lead  
 **Selected candidate:** Candidate B — Personal-Scale Combat Encounter  
-**Implementation authorization:** NO  
-**Current-slice impact:** NONE until explicit Human acceptance
+**Implementation authorization:** YES after merge of this PR  
+**Accepted:** 2026-10-04
 
-This specification turns the reviewed and consolidated Candidate B contract in `docs/planning/slice-5-candidates.md` into the exact proposed Slice 5 normative contract.
+This specification turns the reviewed and consolidated Candidate B contract in `docs/planning/slice-5-candidates.md` into the exact normative Slice 5 contract.
 
-It does **not** mark Slice 5 ACCEPTED.
+Game Design, UX and Architecture final reviews all passed. The Human Project Owner instructed Product to mark the slice ACCEPTED when no material blocker remained. After this PR is merged to `main`, implementation may begin on a separate Architecture branch.
 
 ---
 
@@ -829,7 +829,15 @@ NULL when terminal
 - PATROL_NEUTRALIZED => Group Strength = 0;
 - INCAPACITATED => Combat Vitality = 0.
 
-A narrow partial uniqueness rule preventing more than one ACTIVE encounter for the same campaign + Player Character is allowed.
+A narrow PostgreSQL partial unique index preventing more than one ACTIVE encounter for the same campaign + Player Character is **required**:
+
+```text
+UNIQUE (campaign_id, player_character_id) WHERE status = 'ACTIVE'
+```
+
+The application must translate a concurrent-create uniqueness violation into the normal conflict response.
+
+This database guarantee is required because row locking cannot serialize two concurrent creation requests when no CombatEncounter row exists yet.
 
 ## Explicit architecture boundary
 
@@ -1049,6 +1057,8 @@ Escape feedback may expose:
 
 This visibility is accepted specifically for this combat encounter.
 
+When `last_action` is derived from `DomainEvent`, the Player projection must explicitly map only the approved fields above. It must **not** return or spread the stored event payload wholesale.
+
 It does not establish a universal policy that all hostile canonical stats must be Player-visible in future mechanics.
 
 ## GM projection
@@ -1226,7 +1236,7 @@ Terminal UI:
 2. Backend initializes exact Slice 5 tuning server-side.
 3. Client cannot submit/override tuning values.
 4. Encounter starts ACTIVE, Round 1, Player turn.
-5. A conflicting second ACTIVE encounter for the same Character is rejected.
+5. A conflicting or concurrent second ACTIVE encounter for the same campaign + Character is rejected atomically by the required partial unique index and translated to a normal conflict response.
 
 ## Player projection
 
@@ -1377,7 +1387,7 @@ Expected migration is additive:
 
 - create `combat_encounter`;
 - add FKs/checks/indexes;
-- optional partial ACTIVE uniqueness index.
+- required partial unique index on `(campaign_id, player_character_id)` for rows where `status = 'ACTIVE'`.
 
 No existing mutable data needs transformation under the proposed contract.
 
@@ -1533,21 +1543,18 @@ Key review checks:
 
 ---
 
-# 29. Acceptance gate
+# 29. Implementation gate
 
-This specification is:
+**Slice 5 is ACCEPTED.**
 
-**PROPOSED — CROSS-DOMAIN REVIEW REQUIRED**
+Final Game Design, UX and Architecture reviews all passed. The only required clarification was the atomic one-ACTIVE-encounter uniqueness guarantee, now made normative in this specification.
 
-It is not ACCEPTED.
+Implementation remains blocked only until this normative PR is merged to `main`.
 
-Until explicit Human acceptance after review:
+After merge:
 
-- do not modify `docs/planning/current-slice.md`;
-- do not add a Slice 5 ACCEPTED decision;
-- do not begin implementation;
-- do not create implementation migrations/code from this proposal as if normative.
-
-After reviews are complete, Product will consolidate only material changes or arbitrations.
-
-If no material blocker remains, the Human Project Owner may explicitly accept Slice 5, after which the normative planning documents can be finalized in the repository.
+- `docs/planning/current-slice.md` identifies Slice 5 as the current accepted slice;
+- `docs/planning/decision-log.md` records Slice 5 as ACCEPTED;
+- implementation may begin on a separate short-lived Architecture branch;
+- the testing policy and mandatory Human functional test remain binding;
+- Product must provide the concrete functional test plan at the final pre-human-test acceptance.
