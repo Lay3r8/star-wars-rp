@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from star_wars_rp.api.routers import auth, campaigns, contacts, content, history, player, resolutions
+from star_wars_rp.api.routers import auth, campaigns, combat, contacts, content, history, player, resolutions
 from star_wars_rp.errors import AppError
 
 
@@ -22,6 +22,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(campaigns.router, prefix="/api")
 app.include_router(contacts.router, prefix="/api")
 app.include_router(content.router, prefix="/api")
+app.include_router(combat.router, prefix="/api")
 app.include_router(resolutions.router, prefix="/api")
 app.include_router(player.router, prefix="/api")
 app.include_router(history.router, prefix="/api")

@@ -7,6 +7,7 @@ on:
       - ai/architecture/slice-2-contact
       - ai/architecture/slice-3-adjudication
       - ai/architecture/slice-4-player-roll
+      - ai/architecture/slice-5-combat
   pull_request:
     branches:
       - main
@@ -121,7 +122,7 @@ jobs:
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
             failure="$(grep -E 'e2e/[^ ]+\.spec\.ts:[0-9]+:[0-9]+' /tmp/e2e.log | tail -n 1 || true)"
-            marker="$(grep -E 'S4_STEP:' /tmp/e2e.log | tail -n 1 || true)"
+            marker="$(grep -E 'S[45]_STEP:' /tmp/e2e.log | tail -n 1 || true)"
             locator="$(grep -m1 -E 'Locator:' /tmp/e2e.log || true)"
             error_line="$(grep -m1 -E 'Error:|TimeoutError:|strict mode violation' /tmp/e2e.log || true)"
             message="$(printf '%s %s %s %s' "$marker" "$locator" "$error_line" "$failure" | sed 's/[[:space:]]\+/ /g' | cut -c1-130)"

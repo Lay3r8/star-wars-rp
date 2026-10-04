@@ -66,6 +66,21 @@ def campaign_history(
                 f"{payload.get('recipient_name', 'Character')} learned from "
                 f"{payload.get('contact_name', 'Contact')}: {payload.get('claim_text', '')}"
             )
+        elif event.event_type == "combat.player_attack_resolved":
+            message = (
+                f"Player attack: {payload.get('result', '?')} "
+                f"({payload.get('strength_before', '?')} -> {payload.get('strength_after', '?')} Patrol Strength)."
+            )
+        elif event.event_type == "combat.escape_advanced":
+            message = (
+                f"Escape advanced: {payload.get('progress_before', '?')} "
+                f"-> {payload.get('progress_after', '?')}."
+            )
+        elif event.event_type == "combat.patrol_attack_resolved":
+            message = (
+                f"Patrol attack: {payload.get('result', '?')} "
+                f"({payload.get('vitality_before', '?')} -> {payload.get('vitality_after', '?')} Vitality)."
+            )
         else:
             message = event.event_type
 
