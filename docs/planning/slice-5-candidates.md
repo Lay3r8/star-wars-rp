@@ -1,6 +1,6 @@
 # Slice 4 Product Closeout and Slice 5 Candidate Shortlist
 
-**Status:** PROPOSED — CROSS-DOMAIN REVIEW REQUIRED  
+**Status:** HUMAN OPTION SELECTED — SLICE SPECIFICATION REQUIRED  
 **Owner:** Product Lead  
 **Source of truth:** current `main` after PR #18 and PR #19 merge
 
@@ -1256,15 +1256,113 @@ A second review loop is needed only if one domain identifies a material dependen
 
 ---
 
-# 7. Review and selection gate
+# 7. Human selection
 
-This PR is the shared review surface.
+**Date:** 2026-10-04  
+**Human Project Owner selection:** **Candidate B — Escape the Imperial Patrol / Personal-Scale Combat Encounter**
 
-After parallel reviews:
+## Selection meaning
 
-1. Product consolidates the expert positions.
-2. Product reduces the shortlist to the strongest Human-selection options.
-3. No candidate is selected automatically.
-4. Human selection means selected for specification, not ACCEPTED.
-5. `docs/planning/current-slice.md` remains Slice 4 until a reviewed Slice 5 spec is explicitly accepted.
+Candidate B is selected as the basis for Slice 5 specification.
+
+This is **not yet an ACCEPTED Slice 5 contract**.
+
+The selected Product direction is one complete, bounded, objective-driven personal-scale combat encounter:
+
+```text
+Imperial patrol corners Globox
+-> encounter begins with a concrete escape objective
+-> current actor / turn is established
+-> Player performs bounded combat actions
+-> attack / manoeuvre resolution changes encounter state
+-> one hostile group acts
+-> encounter ends through escape or incapacitation
+```
+
+The selected direction should be substantial enough to prove combat as a real playable capability, but it does not authorize implementation of the full combat system.
+
+## Why this candidate now
+
+Slices 1-4 already prove:
+
+- persistence/auth/campaign isolation;
+- backend-authoritative d20;
+- GM adjudication and correction;
+- Player-triggered Roll;
+- safe Player projections;
+- bounded live freshness.
+
+Slice 5 can therefore spend its complexity budget on the actual combat loop rather than re-solving those foundations.
+
+## Contracts still requiring cross-domain review
+
+### Game Design
+
+Must define the combat micro-contract before implementation:
+
+- initiative / turn-order rule;
+- action economy;
+- attack vs defence procedure;
+- damage;
+- minimum short-term health model;
+- incapacitation;
+- hostile/minion group semantics;
+- whether range/position is required;
+- whether cover is required;
+- encounter objective and exact end condition;
+- which outcomes are deterministic and which remain GM-adjudicated;
+- which combat mechanics are explicitly deferred.
+
+### UX
+
+Must define the repeated live-session loop:
+
+- information that remains continuously visible;
+- action/target selection;
+- number of interactions for a routine combat action;
+- hostile-group presentation;
+- feedback for damage/state changes;
+- objective progress;
+- whether gridless combat is sufficiently understandable;
+- avoidance of long per-action Intent/Risk forms.
+
+### Architecture
+
+Must define the narrowest combat-specific persistence/API model:
+
+- smallest Encounter aggregate;
+- Encounter state vs Character-persistent state;
+- whether health can remain encounter-scoped initially;
+- hostile-group representation;
+- reuse of pure D20 / authorization / polling concepts without making current Slicing ActionResolution the combat engine;
+- concurrency for Player-active actions;
+- explicit avoidance of generic Scene, Rule Effect DSL, workflow engine or tactical-map infrastructure.
+
+## Explicitly not selected
+
+This selection does not pre-accept:
+
+- tactical grid;
+- exact movement distances;
+- full weapon/armour catalogue;
+- critical injury subsystem;
+- Force powers;
+- talents/progression;
+- vehicle/space combat;
+- NPC AI;
+- generic encounter builder;
+- permanent universal health model;
+- generic combat engine abstraction.
+
+---
+
+# 8. Selection gate
+
+After the parallel Game Design, UX and Architecture reviews of Candidate B:
+
+1. Product consolidates only the contracts needed for the bounded personal-scale combat encounter.
+2. A second review loop occurs only if one domain raises a material dependency changing another domain contract.
+3. Product writes the exact Slice 5 specification.
+4. Human acceptance is required before Slice 5 becomes ACCEPTED.
+5. `docs/planning/current-slice.md` remains on Slice 4 until that acceptance.
 6. No implementation begins before the accepted Slice 5 contract is merged to `main`.
